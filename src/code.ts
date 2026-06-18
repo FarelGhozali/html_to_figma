@@ -1,21 +1,188 @@
-figma.showUI(__html__, { width: 400, height: 300 });
+import { FigmaNodeData, FlexLayoutProps, RGBAColor } from './types';
 
-figma.ui.onmessage = msg => {
-  if (msg.type === 'create-rectangles') {
-    const nodes: SceneNode[] = [];
-    for (let i = 0; i < msg.count; i++) {
-      const rect = figma.createRectangle();
-      rect.x = i * 150;
-      rect.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
-      figma.currentPage.appendChild(rect);
-      nodes.push(rect);
+figma.showUI(__html__, { width: 400, height: 500 });
+
+/**
+ * Convert RGBAColor to SolidPaint for Figma.
+ */
+function createSolidPaint(color: RGBAColor): SolidPaint {
+  return {
+    type: 'SOLID',
+    color: { r: color.r, g: color.g, b: color.b },
+    opacity: color.a !== undefined ? color.a : 1,
+  };
+}
+
+/**
+ * Apply Auto Layout (Flexbox) rules to a Frame.
+ */
+function applyLayout(node: FrameNode, layout: FlexLayoutProps) {
+  // Determine layout direction (flex-direction)
+  node.layoutMode = layout.flexDirection === 'ROW' ? 'HORIZONTAL' : 'VERTICAL';
+
+  // Spacing and Padding
+  if (layout.gap !== undefined) node.itemSpacing = layout.gap;
+  if (layout.paddingTop !== undefined) node.paddingTop = layout.paddingTop;
+  if (layout.paddingRight !== undefined) node.paddingRight = layout.paddingRight;
+  if (layout.paddingBottom !== undefined) node.paddingBottom = layout.paddingBottom;
+  if (layout.paddingLeft !== undefined) node.paddingLeft = layout.paddingLeft;
+
+  // Justify Content (Main Axis Alignment)
+  if (layout.justifyContent) {
+    switch (layout.justifyContent) {
+      case 'FLEX_START': node.primaryAxisAlignItems = 'MIN'; break;
+      case 'FLEX_END': node.primaryAxisAlignItems = 'MAX'; break;
+      case 'CENTER': node.primaryAxisAlignItems = 'CENTER'; break;
+      case 'SPACE_BETWEEN': node.primaryAxisAlignItems = 'SPACE_BETWEEN'; break;
     }
-    figma.currentPage.selection = nodes;
-    figma.viewport.scrollAndZoomIntoView(nodes);
   }
 
-  // Make sure to close the plugin when you're done. Otherwise the plugin will
-  // keep running, which shows the cancel button at the bottom of the screen.
+  // Align Items (Cross Axis Alignment)
+  if (layout.alignItems) {
+    switch (layout.alignItems) {
+      case 'FLEX_START': node.counterAxisAlignItems = 'MIN'; break;
+      case 'FLEX_END': node.counterAxisAlignItems = 'MAX'; break;
+      case 'CENTER': node.counterAxisAlignItems = 'CENTER'; break;
+      // STRETCH is usually handled at the child level (layoutAlign = 'STRETCH')
+    }
+  }
+
+  // Sizing Mode (HUG vs FIXED)
+  if (node.layoutMode === 'HORIZONTAL') {
+    node.primaryAxisSizingMode = layout.widthMode === 'HUG' ? 'AUTO' : 'FIXED';
+    node.counterAxisSizingMode = layout.heightMode === 'HUG' ? 'AUTO' : 'FIXED';
+  } else {
+    node.primaryAxisSizingMode = layout.heightMode === 'HUG' ? 'AUTO' : 'FIXED';
+    node.counterAxisSizingMode = layout.widthMode === 'HUG' ? 'AUTO' : 'FIXED';
+  }
+
+  // Set absolute dimensions if mode is FIXED
+  const w = layout.widthMode === 'FIXED' && layout.width !== undefined ? layout.width : node.width;
+  const h = layout.heightMode === 'FIXED' && layout.height !== undefined ? layout.height : node.height;
+  
+  if (layout.widthMode === 'FIXED' || layout.heightMode === 'FIXED') {
+    try {
+      node.resize(w, h);
+    } catch (e) {
+      console.warn('Failed to resize node:', e);
+    }
+  }
+}
+
+/**
+ * Apply child behavior inside Auto Layout (e.g. FILL CONTAINER).
+ */
+function applyChildSizing(node: SceneNode, layout: FlexLayoutProps, parentLayoutMode: 'HORIZONTAL' | 'VERTICAL' | 'NONE') {
+  if (parentLayoutMode === 'HORIZONTAL') {
+    if (layout.widthMode === 'FILL') node.layoutGrow = 1;
+    if (layout.heightMode === 'FILL') node.layoutAlign = 'STRETCH';
+  } else if (parentLayoutMode === 'VERTICAL') {
+    if (layout.heightMode === 'FILL') node.layoutGrow = 1;
+    if (layout.widthMode === 'FILL') node.layoutAlign = 'STRETCH';
+  }
+}
+
+/**
+ * Main recursive function to generate Figma UI from FigmaNodeData structure.
+ */
+export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode | PageNode): Promise<SceneNode> {
+  let createdNode: SceneNode;
+
+  if (nodeData.type === 'FRAME') {
+    const frame = figma.createFrame();
+    createdNode = frame;
+    
+    if (nodeData.name) frame.name = nodeData.name;
+    if (nodeData.backgroundColor) {
+      frame.fills = [createSolidPaint(nodeData.backgroundColor)];
+    }
+
+    // Apply layout to parent first before populating children
+    applyLayout(frame, nodeData.layout);
+
+    // Recursive iteration for each child
+    if (nodeData.children && nodeData.children.length > 0) {
+      for (const childData of nodeData.children) {
+        const childNode = await generateFigmaUI(childData, frame);
+        // Apply responsive child behavior relative to its parent frame
+        applyChildSizing(childNode, childData.layout, frame.layoutMode);
+      }
+    }
+
+  } else if (nodeData.type === 'TEXT') {
+    const textNode = figma.createText();
+    createdNode = textNode;
+    
+    if (nodeData.name) textNode.name = nodeData.name;
+
+    // Asynchronous font loading
+    const fontName: FontName = {
+      family: nodeData.typography.fontFamily || 'Inter',
+      style: nodeData.typography.fontWeight || 'Regular'
+    };
+
+    try {
+      await figma.loadFontAsync(fontName);
+      textNode.fontName = fontName;
+    } catch (e) {
+      console.warn('Font not found, using Inter Regular as fallback:', fontName);
+      await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
+      textNode.fontName = { family: 'Inter', style: 'Regular' };
+    }
+
+    textNode.characters = nodeData.characters;
+    textNode.fontSize = nodeData.typography.fontSize;
+
+    if (nodeData.typography.lineHeight !== undefined) {
+      if (typeof nodeData.typography.lineHeight === 'number') {
+        textNode.lineHeight = { value: nodeData.typography.lineHeight, unit: 'PIXELS' };
+      }
+    }
+
+    if (nodeData.typography.letterSpacing !== undefined) {
+      textNode.letterSpacing = { value: nodeData.typography.letterSpacing, unit: 'PIXELS' };
+    }
+
+    if (nodeData.typography.textAlignHorizontal) {
+      textNode.textAlignHorizontal = nodeData.typography.textAlignHorizontal;
+    }
+
+    if (nodeData.typography.textAlignVertical) {
+      textNode.textAlignVertical = nodeData.typography.textAlignVertical;
+    }
+
+    if (nodeData.typography.color) {
+      textNode.fills = [createSolidPaint(nodeData.typography.color)];
+    }
+
+    // Sizing for text (especially if text content must be FIXED or FILL)
+    if (nodeData.layout.widthMode === 'FIXED' && nodeData.layout.width !== undefined) {
+      textNode.textAutoResize = 'HEIGHT'; // Fixed width, auto height
+      textNode.resize(nodeData.layout.width, textNode.height);
+    } else if (nodeData.layout.widthMode === 'HUG') {
+      textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
+    }
+
+  } else {
+    throw new Error('Node type not supported');
+  }
+
+  // Insert the created node into the parent
+  parent.appendChild(createdNode);
+  return createdNode;
+}
+
+// Event listener from UI interface
+figma.ui.onmessage = async (msg) => {
+  if (msg.type === 'create-ui' && msg.nodeData) {
+    // Generate UI asynchronously
+    const newNode = await generateFigmaUI(msg.nodeData, figma.currentPage);
+    
+    // Zoom to the newly created node
+    figma.currentPage.selection = [newNode];
+    figma.viewport.scrollAndZoomIntoView([newNode]);
+  }
+
   if (msg.type === 'cancel') {
     figma.closePlugin();
   }

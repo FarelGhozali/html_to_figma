@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -66,7 +67,7 @@ type FigmaLayout struct {
 	PaddingBottom         float64 `json:"paddingBottom,omitempty"`
 	PaddingLeft           float64 `json:"paddingLeft,omitempty"`
 	Width                 float64 `json:"width,omitempty"`
-	Height                float64 `json:"height,omitempty"`
+	Height                 float64 `json:"height,omitempty"`
 }
 
 type FigmaNodeData struct {
@@ -102,8 +103,8 @@ func parsePixelValue(val interface{}) float64 {
 	}
 }
 
-// TranslateFlexboxToAutoLayout is a pure function that recursively translates
-// CSS layout concepts into strict Figma Auto Layout parameters.
+// TranslateFlexboxToAutoLayout is a pure function that translates
+// CSS layout concepts into strict Figma Auto Layout parameters for a single node.
 func TranslateFlexboxToAutoLayout(incoming *IncomingNode) FigmaNodeData {
 	if incoming == nil {
 		return FigmaNodeData{}
@@ -155,13 +156,6 @@ func TranslateFlexboxToAutoLayout(incoming *IncomingNode) FigmaNodeData {
 		Height:                parsePixelValue(incoming.Layout.Height),
 	}
 
-	// Recursively translate children
-	var translatedChildren []*FigmaNodeData
-	for _, child := range incoming.Children {
-		childData := TranslateFlexboxToAutoLayout(child)
-		translatedChildren = append(translatedChildren, &childData)
-	}
-
 	return FigmaNodeData{
 		Type:            incoming.Type,
 		Name:            incoming.Name,
@@ -169,8 +163,43 @@ func TranslateFlexboxToAutoLayout(incoming *IncomingNode) FigmaNodeData {
 		BackgroundColor: incoming.BackgroundColor,
 		Characters:      incoming.Characters,
 		Typography:      incoming.Typography,
-		Children:        translatedChildren,
+		// Children will be processed separately
 	}
+}
+
+// processNodeTreeRecursive handles the deep traversal and applies the translation
+func processNodeTreeRecursive(root *IncomingNode, currentDepth int) (*FigmaNodeData, error) {
+	if root == nil {
+		return nil, nil
+	}
+	
+	// Memory leak and stack overflow prevention
+	if currentDepth > 50 {
+		return nil, fmt.Errorf("max recursion depth exceeded (limit: 50)")
+	}
+
+	// Translate the current node
+	figmaNode := TranslateFlexboxToAutoLayout(root)
+
+	// Recursively process children
+	var translatedChildren []*FigmaNodeData
+	for _, child := range root.Children {
+		childData, err := processNodeTreeRecursive(child, currentDepth+1)
+		if err != nil {
+			return nil, err // Fast fail on recursion depth error
+		}
+		if childData != nil {
+			translatedChildren = append(translatedChildren, childData)
+		}
+	}
+
+	figmaNode.Children = translatedChildren
+	return &figmaNode, nil
+}
+
+// ProcessNodeTree explores the node tree recursively and handles deep depth limits
+func ProcessNodeTree(root *IncomingNode) (*FigmaNodeData, error) {
+	return processNodeTreeRecursive(root, 0)
 }
 
 // --- HTTP HANDLERS ---
@@ -189,10 +218,19 @@ func parseLayoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	// Execute pure function translation
-	figmaNodeTree := TranslateFlexboxToAutoLayout(&rootNode)
+	// Execute safe recursive translation
+	figmaNodeTree, err := ProcessNodeTree(&rootNode)
+	if err != nil {
+		log.Printf("Error processing node tree: %v\n", err)
+		http.Error(w, "Error processing layout: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	log.Printf("Successfully translated tree. Root Figma Node: %s, Children: %d\n", figmaNodeTree.Type, len(figmaNodeTree.Children))
+	if figmaNodeTree != nil {
+		log.Printf("Successfully translated tree. Root Figma Node: %s, Children: %d\n", figmaNodeTree.Type, len(figmaNodeTree.Children))
+	} else {
+		log.Printf("Translated tree is empty.\n")
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

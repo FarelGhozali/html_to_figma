@@ -3,6 +3,23 @@ export interface DOMNodeHierarchy {
   children: DOMNodeHierarchy[];
 }
 
+export interface ExtractedStyles {
+  width: number;
+  height: number;
+  isFlex: boolean;
+  flexDirection?: 'ROW' | 'COLUMN';
+  paddingTop: number;
+  paddingRight: number;
+  paddingBottom: number;
+  paddingLeft: number;
+  gap: number;
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: string;
+  color?: { r: number; g: number; b: number; a: number }; // Figma RGB 0-1
+  lineHeight?: number;
+}
+
 /**
  * Pure Vanilla JavaScript function (enhanced with TypeScript types)
  * to recursively traverse the DOM Tree and validate elements.
@@ -72,4 +89,81 @@ export function traverseDOM(element: Element | Node): DOMNodeHierarchy | null {
     element: element,
     children: validChildren
   };
+}
+
+/**
+ * Helper to parse a pixel string to a float number.
+ */
+function parsePx(value: string | null | undefined): number {
+  if (!value) return 0;
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+/**
+ * Converts a browser CSS color string (rgb, rgba) to Figma's 0-1 RGBA format.
+ */
+export function rgbaToFigmaColor(rgbaString: string) {
+  // Matches rgb(r, g, b) or rgba(r, g, b, a)
+  const match = rgbaString.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+  if (!match) return undefined;
+
+  const r = parseInt(match[1], 10) / 255;
+  const g = parseInt(match[2], 10) / 255;
+  const b = parseInt(match[3], 10) / 255;
+  const a = match[4] !== undefined ? parseFloat(match[4]) : 1;
+
+  return { r, g, b, a };
+}
+
+/**
+ * Extracts styling rules from a valid HTML Element.
+ */
+export function extractFigmaStyles(element: Element): ExtractedStyles {
+  const rect = element.getBoundingClientRect();
+  const style = window.getComputedStyle(element);
+
+  const result: ExtractedStyles = {
+    width: rect.width,
+    height: rect.height,
+    isFlex: style.display === 'flex' || style.display === 'inline-flex',
+    paddingTop: parsePx(style.paddingTop),
+    paddingRight: parsePx(style.paddingRight),
+    paddingBottom: parsePx(style.paddingBottom),
+    paddingLeft: parsePx(style.paddingLeft),
+    gap: parsePx(style.gap)
+  };
+
+  if (result.isFlex) {
+    result.flexDirection = style.flexDirection === 'column' ? 'COLUMN' : 'ROW';
+  }
+
+  // Check if it has any text nodes as direct children to extract typography
+  let hasText = false;
+  for (let i = 0; i < element.childNodes.length; i++) {
+    const child = element.childNodes[i];
+    if (child.nodeType === Node.TEXT_NODE && (child.textContent || '').trim() !== '') {
+      hasText = true;
+      break;
+    }
+  }
+
+  if (hasText) {
+    result.fontFamily = style.fontFamily;
+    result.fontSize = parsePx(style.fontSize);
+    result.fontWeight = style.fontWeight;
+    
+    if (style.lineHeight && style.lineHeight !== 'normal') {
+      result.lineHeight = parsePx(style.lineHeight);
+    }
+    
+    if (style.color) {
+      const parsedColor = rgbaToFigmaColor(style.color);
+      if (parsedColor) {
+        result.color = parsedColor;
+      }
+    }
+  }
+
+  return result;
 }

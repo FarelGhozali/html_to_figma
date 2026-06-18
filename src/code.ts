@@ -174,13 +174,21 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
 
 // Event listener from UI interface
 figma.ui.onmessage = async (msg) => {
-  if (msg.type === 'create-ui' && msg.nodeData) {
-    // Generate UI asynchronously
-    const newNode = await generateFigmaUI(msg.nodeData, figma.currentPage);
-    
-    // Zoom to the newly created node
-    figma.currentPage.selection = [newNode];
-    figma.viewport.scrollAndZoomIntoView([newNode]);
+  if (msg.type === 'import-json' && msg.data) {
+    try {
+      // Parse the incoming JSON string from the UI
+      const nodeData = JSON.parse(msg.data);
+      
+      // Generate UI asynchronously
+      const newNode = await generateFigmaUI(nodeData, figma.currentPage);
+      
+      // Zoom to the newly created node
+      figma.currentPage.selection = [newNode];
+      figma.viewport.scrollAndZoomIntoView([newNode]);
+    } catch (e) {
+      console.error("Failed to parse or generate UI:", e);
+      figma.notify("Error importing JSON. Make sure the JSON is valid.", { error: true });
+    }
   }
 
   if (msg.type === 'cancel') {

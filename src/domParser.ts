@@ -1,3 +1,5 @@
+import { FigmaNodeData, FigmaFrameNode, FigmaTextNode } from './types';
+
 export interface DOMNodeHierarchy {
   element: Element | Node;
   children: DOMNodeHierarchy[];
@@ -18,6 +20,7 @@ export interface ExtractedStyles {
   fontWeight?: string;
   color?: { r: number; g: number; b: number; a: number }; // Figma RGB 0-1
   lineHeight?: number;
+  backgroundColor?: { r: number; g: number; b: number; a: number };
 }
 
 /**
@@ -134,6 +137,13 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     gap: parsePx(style.gap)
   };
 
+  if (style.backgroundColor && style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent') {
+    const parsedColor = rgbaToFigmaColor(style.backgroundColor);
+    if (parsedColor) {
+      result.backgroundColor = parsedColor;
+    }
+  }
+
   if (result.isFlex) {
     result.flexDirection = style.flexDirection === 'column' ? 'COLUMN' : 'ROW';
   }
@@ -166,4 +176,123 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
   }
 
   return result;
+}
+
+/**
+ * Yields execution to the main thread to prevent UI blocking.
+ */
+const yieldToMain = () => new Promise(resolve => requestAnimationFrame(resolve));
+
+/**
+ * Main function to traverse the DOM, extract styles, and generate Figma JSON.
+ * Executes asynchronously using requestAnimationFrame to avoid UI blocking.
+ * 
+ * @param rootElementId The ID of the root element to start traversal from.
+ */
+export async function generateFigmaJSON(rootElementId: string): Promise<void> {
+  const rootElement = document.getElementById(rootElementId);
+  if (!rootElement) {
+    console.error(`Element with ID "${rootElementId}" not found.`);
+    return;
+  }
+
+  async function buildNodeData(element: Element | Node): Promise<FigmaNodeData | null> {
+    await yieldToMain(); // Prevent blocking
+
+    // 1. Basic validation
+    if (element.nodeType !== Node.ELEMENT_NODE && element.nodeType !== Node.TEXT_NODE) {
+      return null;
+    }
+
+    if (element.nodeType === Node.ELEMENT_NODE) {
+      const el = element as Element;
+      const tagName = el.tagName.toUpperCase();
+
+      const ignoredTags = ['SCRIPT', 'STYLE', 'META', 'NOSCRIPT'];
+      if (ignoredTags.includes(tagName)) return null;
+
+      try {
+        const style = window.getComputedStyle(el);
+        if (
+          style.display === 'none' ||
+          style.visibility === 'hidden' ||
+          parseFloat(style.opacity || '1') === 0
+        ) {
+          return null;
+        }
+      } catch (e) {
+        return null;
+      }
+
+      // Valid Element -> Map to FRAME
+      const extractedStyles = extractFigmaStyles(el);
+      
+      const frameNode: FigmaFrameNode = {
+        type: 'FRAME',
+        name: el.id ? `#${el.id}` : tagName,
+        backgroundColor: extractedStyles.backgroundColor,
+        layout: {
+          widthMode: 'FIXED', 
+          heightMode: 'FIXED',
+          width: extractedStyles.width,
+          height: extractedStyles.height,
+          flexDirection: extractedStyles.flexDirection,
+          gap: extractedStyles.gap,
+          paddingTop: extractedStyles.paddingTop,
+          paddingRight: extractedStyles.paddingRight,
+          paddingBottom: extractedStyles.paddingBottom,
+          paddingLeft: extractedStyles.paddingLeft,
+        },
+        children: []
+      };
+
+      const childNodes = element.childNodes;
+      for (let i = 0; i < childNodes.length; i++) {
+        const childData = await buildNodeData(childNodes[i]);
+        if (childData) {
+          frameNode.children!.push(childData);
+        }
+      }
+
+      return frameNode;
+
+    } else if (element.nodeType === Node.TEXT_NODE) {
+      const textContent = element.textContent || '';
+      if (textContent.trim() === '') return null;
+
+      const parentEl = element.parentElement;
+      if (!parentEl) return null;
+
+      const parentStyles = extractFigmaStyles(parentEl);
+      
+      const textNode: FigmaTextNode = {
+        type: 'TEXT',
+        name: 'Text',
+        characters: textContent.trim(),
+        layout: {
+          widthMode: 'HUG',
+          heightMode: 'HUG'
+        },
+        typography: {
+          fontFamily: parentStyles.fontFamily || 'Inter',
+          fontSize: parentStyles.fontSize || 16,
+          fontWeight: parentStyles.fontWeight || 'Regular',
+          lineHeight: parentStyles.lineHeight,
+          color: parentStyles.color || { r: 0, g: 0, b: 0, a: 1 }
+        }
+      };
+
+      return textNode;
+    }
+
+    return null;
+  }
+
+  const figmaTree = await buildNodeData(rootElement);
+  
+  if (figmaTree) {
+    console.log(JSON.stringify(figmaTree, null, 2));
+  } else {
+    console.log('No valid tree generated.');
+  }
 }

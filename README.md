@@ -1,53 +1,74 @@
 # HTML to Figma
 
-This project is a boilerplate and development environment for building a Figma Plugin using TypeScript and Vite. It is designed to handle both the plugin logic (sandbox) and the user interface (iframe) efficiently.
+This project provides a complete infrastructure for converting web-based DOM structures into Figma-compatible node hierarchies. It consists of a Figma Plugin frontend (TypeScript and Vite) and a robust backend microservice written in pure Golang.
 
-## Architecture
+## Architecture Overview
 
-Figma plugins that feature a user interface require all HTML, CSS, and JavaScript to be bundled into a single file, as local external assets are not supported within the Figma iframe. This project solves that by utilizing Vite and esbuild:
+The system is divided into two primary components:
 
-- **src/ui.html & src/ui.ts**: The user interface is bundled by Vite. The `vite-plugin-singlefile` extension ensures that all CSS and JavaScript are inlined directly into the final `ui.html` output.
-- **src/code.ts**: The main Figma sandbox script is bundled simultaneously using esbuild (which is built into Vite), compiling it down to a single `dist/code.js` file.
+1. **Figma Plugin (Frontend)**
+   - **User Interface**: Built with Tailwind CSS, featuring a modern, minimal dark mode developer interface.
+   - **DOM Parser (`src/domParser.ts`)**: A strict JavaScript engine that recursively traverses the DOM tree, extracts absolute dimensions, computes CSS Flexbox rules, and filters out invisible elements.
+   - **Sandbox API (`src/code.ts`)**: Generates Figma native UI elements (Frames and Texts), applies Auto Layout rules, and manages asynchronous font loading.
+
+2. **Golang Microservice (Backend)**
+   - **Translation Engine (`backend/main.go`)**: A pure Golang `net/http` microservice that receives raw JSON from the frontend parser.
+   - **Data Structures**: Utilizes efficient pointer-based structs to manage deep recursive DOM trees without memory leaks.
+   - **Logic Mapping**: Translates CSS Flexbox rules (such as `flex-direction`, `justify-content`, and `align-items`) into strict Figma Auto Layout parameters (`layoutMode`, `primaryAxisAlignItems`, etc.).
 
 ## Prerequisites
 
-- Node.js (version 14 or higher is recommended)
+- Node.js (version 14 or higher)
+- Go (version 1.20 or higher)
 - Figma Desktop App
 
 ## Getting Started
 
-1. Install the dependencies:
-   ```bash
-   npm install
-   ```
+### 1. Starting the Go Microservice
 
-2. Build the plugin:
-   To build the project once for production, run:
-   ```bash
-   npm run build
-   ```
-   
-   To start the development environment that automatically watches for file changes and rebuilds the project, run:
-   ```bash
-   npm run dev
-   ```
+Navigate to the backend directory and run the server:
 
-   The build output will be generated inside the `dist/` directory.
+```bash
+cd backend
+go run main.go
+```
+The microservice will start on port `8080` and expose the `/parse-layout` endpoint.
+
+### 2. Building the Figma Plugin
+
+Open a new terminal at the root of the project.
+
+Install dependencies:
+```bash
+npm install
+```
+
+Start the development environment (which automatically rebuilds on file changes):
+```bash
+npm run dev
+```
+Alternatively, build for production:
+```bash
+npm run build
+```
+The output will be bundled inside the `dist/` directory.
 
 ## Importing into Figma
 
 1. Open the Figma Desktop App.
 2. Open any design file.
 3. Right-click on the canvas, navigate to **Plugins** -> **Development** -> **Import plugin from manifest...**.
-4. Select the `manifest.json` file located in the root directory of this project.
-5. The plugin is now ready to use and test within Figma.
+4. Select the `manifest.json` file located in the root directory.
+5. The plugin interface will appear, ready to accept JSON payloads for conversion.
 
 ## Project Structure
 
-- `manifest.json`: The core configuration file for the Figma plugin.
-- `vite.config.ts`: The build configuration for Vite and esbuild.
-- `src/code.ts`: The main plugin logic that interacts directly with the Figma API.
-- `src/ui.html`: The markup for the plugin's user interface.
-- `src/ui.ts`: The interactive logic and scripts for the user interface.
-- `src/ui.css`: The styling for the user interface.
-- `dist/`: The output folder containing the bundled files ready for Figma.
+- `backend/main.go`: The pure Go microservice handling spatial translation and recursion depth safety.
+- `manifest.json`: Configuration file for the Figma plugin.
+- `vite.config.ts`: Build configuration ensuring the UI and sandbox are compiled correctly.
+- `src/domParser.ts`: The DOM traversal and CSS extraction engine.
+- `src/types.ts`: Strict TypeScript interfaces for the node structures.
+- `src/code.ts`: Figma sandbox logic.
+- `src/ui.html`: The markup for the plugin's UI utilizing Tailwind CSS.
+- `src/ui.ts`: UI logic that handles user input and dispatches messages to the Figma API.
+- `dist/`: The final bundled folder for Figma.

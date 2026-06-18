@@ -1,15 +1,100 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Figma Plugin</title>
+  <title>DOM to Figma Importer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            figma: {
+              bg: '#1e1e1e',
+              surface: '#2c2c2c',
+              border: '#444444',
+              text: '#e0e0e0',
+              blue: '#18a0fb',
+              blueHover: '#0b8deb'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar to match dark theme */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1e1e1e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #444444;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555555;
+    }
+    
+    body {
+      background-color: #1e1e1e;
+    }
+    
+    textarea {
+      resize: none;
+    }
+  </style>
 </head>
-<body>
-  <h2>Figma Plugin UI</h2>
-  <p>Count: <input id="count" type="number" value="5"></p>
-  <button id="create">Create</button>
-  <button id="cancel">Cancel</button>
+<body class="h-screen w-screen flex flex-col p-4 bg-figma-bg text-figma-text font-sans box-border overflow-hidden m-0">
+  
+  <!-- Header -->
+  <header class="flex-shrink-0 mb-4">
+    <h1 class="text-[13px] font-semibold tracking-wide text-white">DOM to Figma Importer</h1>
+  </header>
+
+  <!-- JSON Input Area -->
+  <div class="flex-grow flex flex-col mb-4 overflow-hidden rounded border border-figma-border bg-figma-surface focus-within:border-figma-blue transition-colors duration-200">
+    <textarea 
+      id="json-input" 
+      class="w-full h-full bg-transparent p-3 text-[11px] leading-relaxed font-mono text-gray-300 placeholder-gray-500 focus:outline-none"
+      placeholder="Paste Golang JSON output here...&#10;&#10;{&#10;  &quot;type&quot;: &quot;FRAME&quot;,&#10;  &quot;layout&quot;: { ... }&#10;}"
+      spellcheck="false"
+    ></textarea>
+  </div>
+
+  <!-- Options -->
+  <div class="flex-shrink-0 flex items-center mb-5">
+    <input 
+      type="checkbox" 
+      id="use-autolayout" 
+      class="w-[14px] h-[14px] text-figma-blue bg-figma-surface border-figma-border rounded focus:ring-figma-blue focus:ring-1 focus:outline-none cursor-pointer"
+      checked
+    >
+    <label for="use-autolayout" class="ml-2 text-[11px] text-gray-300 cursor-pointer select-none font-medium">
+      Enforce Auto Layout
+    </label>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="flex-shrink-0 flex gap-2 mt-auto">
+    <button 
+      id="btn-import" 
+      class="flex-1 bg-figma-blue hover:bg-figma-blueHover text-white text-[11px] font-semibold py-2 px-3 rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-figma-bg focus:ring-figma-blue tracking-wide"
+    >
+      Import to Canvas
+    </button>
+    <button 
+      id="btn-cancel" 
+      class="flex-1 bg-transparent border border-figma-border hover:bg-figma-surface text-white text-[11px] font-semibold py-2 px-3 rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-figma-bg focus:ring-figma-border tracking-wide"
+    >
+      Cancel
+    </button>
+  </div>
 
   <script type="module" src="./ui.ts"></script>
 </body>

@@ -1,74 +1,109 @@
+<div align="center">
+  
 # HTML to Figma
 
-This project provides a complete infrastructure for converting web-based DOM structures into Figma-compatible node hierarchies. It consists of a Figma Plugin frontend (TypeScript and Vite) and a robust backend microservice written in pure Golang.
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](#)
+[![License: ISC](https://img.shields.io/badge/License-ISC-yellow.svg)](https://opensource.org/licenses/ISC)
+[![Figma API](https://img.shields.io/badge/Figma%20API-Supported-ff69b4.svg)](#)
 
-## Architecture Overview
+A powerful, standalone Figma Plugin that instantly converts your HTML & CSS code into native Figma node hierarchies (Auto Layout Frames and Text).
 
-The system is divided into two primary components:
 
-1. **Figma Plugin (Frontend)**
-   - **User Interface**: Built with Tailwind CSS, featuring a modern, minimal dark mode developer interface.
-   - **DOM Parser (`src/domParser.ts`)**: A strict JavaScript engine that recursively traverses the DOM tree, extracts absolute dimensions, computes CSS Flexbox rules, and filters out invisible elements.
-   - **Sandbox API (`src/code.ts`)**: Generates Figma native UI elements (Frames and Texts), applies Auto Layout rules, and manages asynchronous font loading.
+</div>
 
-2. **Golang Microservice (Backend)**
-   - **Translation Engine (`backend/main.go`)**: A pure Golang `net/http` microservice that receives raw JSON from the frontend parser.
-   - **Data Structures**: Utilizes efficient pointer-based structs to manage deep recursive DOM trees without memory leaks.
-   - **Logic Mapping**: Translates CSS Flexbox rules (such as `flex-direction`, `justify-content`, and `align-items`) into strict Figma Auto Layout parameters (`layoutMode`, `primaryAxisAlignItems`, etc.).
+---
+
+## Overview
+
+Tired of manually recreating web components in Figma? This plugin acts as your personal bridge from code to design. It operates **100% locally** within your Figma Plugin sandbox without external servers, backends, or lag. Simply paste your HTML, and watch it render into pixel-perfect Figma layers.
+
+## Features
+
+- **No Backend Required**: Runs entirely inside Figma's UI iframe using a virtual DOM environment.
+- **Auto Layout Mastery**: Automatically translates CSS Flexbox rules (`flex-direction`, `justify-content`, `align-items`, `gap`, `padding`) into strict Figma Auto Layout parameters.
+- **Modern UI**: Built with Tailwind CSS, featuring a sleek, minimal dark mode interface.
+- **Typography Extraction**: Accurately pulls font families, weights, sizes, and colors directly from your CSS.
+- **Instant Translation**: Paste your HTML code and see it instantly rendered as native Figma layers.
+
+---
 
 ## Prerequisites
 
-- Node.js (version 14 or higher)
-- Go (version 1.20 or higher)
-- Figma Desktop App
+Before you begin, ensure you have met the following requirements:
+- **Node.js** (v14.0.0 or higher)
+- **NPM** or **Yarn**
+- **Figma Desktop App** (Recommended) or Figma in the Browser
 
-## Getting Started
+---
 
-### 1. Starting the Go Microservice
+## Installation & Setup
 
-Navigate to the backend directory and run the server:
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/yourusername/html_to_figma.git
+   cd html_to_figma
+   ```
 
-```bash
-cd backend
-go run main.go
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Build the plugin:**
+   Start the development server with hot-reload:
+   ```bash
+   npm run dev
+   ```
+   *Or build for production:*
+   ```bash
+   npm run build
+   ```
+   > The compiled files will be generated in the `dist/` directory.
+
+---
+
+## How to Use
+
+1. Open the **Figma Desktop App** and open any design file.
+2. Right-click on the canvas and navigate to **Plugins > Development > Import plugin from manifest...**
+3. Select the `manifest.json` file located in the root directory of this project.
+4. Once the plugin UI opens, paste your HTML and inline CSS into the text area. 
+
+### Usage Example
+
+Paste the following code into the plugin:
+```html
+<div style="display: flex; flex-direction: column; gap: 16px; padding: 32px; background-color: #18a0fb; border-radius: 12px;">
+  <h1 style="color: white; font-family: Inter; font-size: 24px; font-weight: bold;">Hello Figma!</h1>
+  <p style="color: #e0e0e0; font-family: Inter; font-size: 14px;">This was generated directly from HTML code.</p>
+</div>
 ```
-The microservice will start on port `8080` and expose the `/parse-layout` endpoint.
+Click **Import to Canvas**, and the plugin will magically generate a Figma Frame with Vertical Auto Layout, correct padding, gap, and text nodes!
 
-### 2. Building the Figma Plugin
+---
 
-Open a new terminal at the root of the project.
+## Known Limitations
 
-Install dependencies:
-```bash
-npm install
-```
+Translating web DOM to Figma is highly complex. Currently, the plugin excels at Flexbox but has a few limitations:
+- **CSS Grid**: Not currently supported (mapped to standard frames).
+- **Absolute Positioning**: Elements with `position: absolute` may not align perfectly within Auto Layout frames.
+- **Complex Pseudo-elements**: `::before` and `::after` are ignored.
+- **Images/SVG**: `<img>` tags and inline `<svg>` are currently skipped and need manual insertion.
 
-Start the development environment (which automatically rebuilds on file changes):
-```bash
-npm run dev
-```
-Alternatively, build for production:
-```bash
-npm run build
-```
-The output will be bundled inside the `dist/` directory.
+---
 
-## Importing into Figma
+## Contributing
 
-1. Open the Figma Desktop App.
-2. Open any design file.
-3. Right-click on the canvas, navigate to **Plugins** -> **Development** -> **Import plugin from manifest...**.
-4. Select the `manifest.json` file located in the root directory.
-5. The plugin interface will appear, ready to accept JSON payloads for conversion.
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-## Project Structure
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-- `backend/main.go`: The pure Go microservice handling spatial translation and recursion depth safety.
-- `manifest.json`: Configuration file for the Figma plugin.
-- `vite.config.ts`: Build configuration ensuring the UI and sandbox are compiled correctly.
-- `src/domParser.ts`: The DOM traversal and CSS extraction engine.
-- `src/types.ts`: Strict TypeScript interfaces for the node structures.
-- `src/code.ts`: Figma sandbox logic.
-- `src/ui.html`: The markup for the plugin's UI utilizing Tailwind CSS.
-- `src/ui.ts`: UI logic that handles user input and dispatches messages to the Figma API.
-- `dist/`: The final bundled folder for Figma.
+---
+
+## License
+
+Distributed under the ISC License. See `package.json` for more information.

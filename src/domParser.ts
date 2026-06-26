@@ -124,7 +124,8 @@ export function rgbaToFigmaColor(rgbaString: string) {
  */
 export function extractFigmaStyles(element: Element): ExtractedStyles {
   const rect = element.getBoundingClientRect();
-  const style = window.getComputedStyle(element);
+  const win = element.ownerDocument.defaultView || window;
+  const style = win.getComputedStyle(element);
 
   const result: ExtractedStyles = {
     width: rect.width,
@@ -189,13 +190,7 @@ const yieldToMain = () => new Promise(resolve => requestAnimationFrame(resolve))
  * 
  * @param rootElementId The ID of the root element to start traversal from.
  */
-export async function generateFigmaJSON(rootElementId: string): Promise<void> {
-  const rootElement = document.getElementById(rootElementId);
-  if (!rootElement) {
-    console.error(`Element with ID "${rootElementId}" not found.`);
-    return;
-  }
-
+export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNodeData | null> {
   async function buildNodeData(element: Element | Node): Promise<FigmaNodeData | null> {
     await yieldToMain(); // Prevent blocking
 
@@ -212,7 +207,8 @@ export async function generateFigmaJSON(rootElementId: string): Promise<void> {
       if (ignoredTags.includes(tagName)) return null;
 
       try {
-        const style = window.getComputedStyle(el);
+        const win = el.ownerDocument.defaultView || window;
+        const style = win.getComputedStyle(el);
         if (
           style.display === 'none' ||
           style.visibility === 'hidden' ||
@@ -288,11 +284,5 @@ export async function generateFigmaJSON(rootElementId: string): Promise<void> {
     return null;
   }
 
-  const figmaTree = await buildNodeData(rootElement);
-  
-  if (figmaTree) {
-    console.log(JSON.stringify(figmaTree, null, 2));
-  } else {
-    console.log('No valid tree generated.');
-  }
+  return await buildNodeData(rootElement);
 }

@@ -53,16 +53,22 @@
 <body class="h-screen w-screen flex flex-col p-4 bg-figma-bg text-figma-text font-sans box-border overflow-hidden m-0">
   
   <!-- Header -->
-  <header class="flex-shrink-0 mb-4">
+  <header class="flex-shrink-0 mb-4 flex justify-between items-center">
     <h1 class="text-[13px] font-semibold tracking-wide text-white">HTML to Figma</h1>
+    <button 
+      id="btn-test" 
+      class="bg-figma-surface hover:bg-figma-border text-gray-300 text-[10px] px-2 py-1 rounded border border-figma-border transition-colors duration-200 focus:outline-none"
+    >
+      Auto Test Render
+    </button>
   </header>
 
-  <!-- JSON Input Area -->
+  <!-- HTML Input Area -->
   <div class="flex-grow flex flex-col mb-4 overflow-hidden rounded border border-figma-border bg-figma-surface focus-within:border-figma-blue transition-colors duration-200">
     <textarea 
-      id="json-input" 
+      id="html-input" 
       class="w-full h-full bg-transparent p-3 text-[11px] leading-relaxed font-mono text-gray-300 placeholder-gray-500 focus:outline-none"
-      placeholder="Paste Golang JSON output here...&#10;&#10;{&#10;  &quot;type&quot;: &quot;FRAME&quot;,&#10;  &quot;layout&quot;: { ... }&#10;}"
+      placeholder="Paste HTML & CSS code here...&#10;&#10;<div style=&quot;display: flex; gap: 10px;&quot;>&#10;  <h1>Hello Figma</h1>&#10;</div>"
       spellcheck="false"
     ></textarea>
   </div>
@@ -95,6 +101,9 @@
       Cancel
     </button>
   </div>
+
+  <!-- Hidden Iframe for Rendering -->
+  <iframe id="render-frame" class="absolute w-[1000px] h-[1000px] opacity-0 pointer-events-none -z-50" style="left: -10000px;"></iframe>
 
   <script type="module" src="./ui.ts"></script>
 </body>

@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Automatically run when you push a tag like v1.0.0
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to create a release
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build Plugin
+      run: npm run build
+
+    - name: Create Plugin Archive
+      run: |
+        zip -r html_to_figma_plugin.zip dist/ manifest.json
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: html_to_figma_plugin.zip
+        generate_release_notes: true

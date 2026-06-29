@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # Konfigurasi untuk memeriksa pembaruan dependensi npm (package.json)
+  - package-ecosystem: "npm"
+    # Direktori tempat package.json berada (di root)
+    directory: "/"
+    # Jadwal seberapa sering dependabot akan memeriksa pembaruan
+    schedule:
+      interval: "weekly" # Pilihan lain: "daily" atau "monthly"
+    
+    # (Opsional) Mengelompokkan PR dari Dependabot jika ada
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+          
+    # Opsi lain yang bisa berguna:
+    # open-pull-requests-limit: 10
+    # commit-message:
+    #   prefix: "chore"
+    #   include: "scope"
+
+  # Konfigurasi untuk memperbarui Actions yang digunakan di GitHub Workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

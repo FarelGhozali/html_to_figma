@@ -106,6 +106,9 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
     if (nodeData.strokeColor && nodeData.strokeWeight !== undefined) {
       frame.strokes = [createSolidPaint(nodeData.strokeColor)];
       frame.strokeWeight = nodeData.strokeWeight;
+      if (nodeData.strokeDashPattern) {
+        frame.dashPattern = nodeData.strokeDashPattern;
+      }
     }
 
     // Apply layout to parent first before populating children
@@ -175,6 +178,8 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
       textNode.resize(nodeData.layout.width, textNode.height);
     } else if (nodeData.layout.widthMode === 'HUG') {
       textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
+    } else if (nodeData.layout.widthMode === 'FILL') {
+      textNode.textAutoResize = 'HEIGHT';
     }
 
   } else {

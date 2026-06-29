@@ -30,6 +30,7 @@ export interface ExtractedStyles {
   cornerRadius?: number;
   strokeColor?: { r: number; g: number; b: number; a: number };
   strokeWeight?: number;
+  strokeDashPattern?: readonly number[];
 }
 
 /**
@@ -197,6 +198,11 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
         const parsedStroke = rgbaToFigmaColor(style.borderColor);
         if (parsedStroke) result.strokeColor = parsedStroke;
       }
+      if (style.borderStyle === 'dashed') {
+        result.strokeDashPattern = [weight * 3, weight * 3];
+      } else if (style.borderStyle === 'dotted') {
+        result.strokeDashPattern = [weight, weight * 2];
+      }
     }
   }
 
@@ -325,6 +331,7 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         cornerRadius: extractedStyles.cornerRadius,
         strokeColor: extractedStyles.strokeColor,
         strokeWeight: extractedStyles.strokeWeight,
+        strokeDashPattern: extractedStyles.strokeDashPattern,
         layout: {
           widthMode: 'FIXED', 
           heightMode: 'FIXED',

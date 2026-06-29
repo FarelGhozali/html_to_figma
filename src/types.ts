@@ -73,6 +73,7 @@ export interface BaseFigmaNode {
   cornerRadius?: number;
   strokeColor?: RGBAColor;
   strokeWeight?: number;
+  strokeDashPattern?: readonly number[];
 }
 
 /**

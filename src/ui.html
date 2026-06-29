@@ -53,7 +53,7 @@
 <body class="h-screen w-screen flex flex-col p-4 bg-figma-bg text-figma-text font-sans box-border overflow-hidden m-0">
   
   <!-- Header -->
-  <header class="flex-shrink-0 mb-4 flex justify-between items-center">
+  <header class="flex-shrink-0 mb-3 flex justify-between items-center">
     <h1 class="text-[13px] font-semibold tracking-wide text-white">HTML to Figma</h1>
     <button 
       id="btn-test" 
@@ -63,14 +63,35 @@
     </button>
   </header>
 
+  <!-- Tabs -->
+  <div class="flex-shrink-0 flex space-x-1 mb-3 bg-figma-surface p-1 rounded border border-figma-border">
+    <button id="tab-code" class="flex-1 py-1 text-[11px] font-medium rounded bg-figma-bg text-white shadow-sm transition-colors duration-200 focus:outline-none">Paste Code</button>
+    <button id="tab-url" class="flex-1 py-1 text-[11px] font-medium rounded text-gray-400 hover:text-white transition-colors duration-200 focus:outline-none">From URL</button>
+  </div>
+
   <!-- HTML Input Area -->
-  <div class="flex-grow flex flex-col mb-4 overflow-hidden rounded border border-figma-border bg-figma-surface focus-within:border-figma-blue transition-colors duration-200">
+  <div id="area-code" class="flex-grow flex flex-col mb-4 overflow-hidden rounded border border-figma-border bg-figma-surface focus-within:border-figma-blue transition-colors duration-200">
     <textarea 
       id="html-input" 
       class="w-full h-full bg-transparent p-3 text-[11px] leading-relaxed font-mono text-gray-300 placeholder-gray-500 focus:outline-none"
       placeholder="Paste HTML & CSS code here...&#10;&#10;<div style=&quot;display: flex; gap: 10px;&quot;>&#10;  <h1>Hello Figma</h1>&#10;</div>"
       spellcheck="false"
     ></textarea>
+  </div>
+
+  <!-- URL Input Area -->
+  <div id="area-url" class="flex-grow flex flex-col mb-4 hidden">
+    <p class="text-[11px] text-gray-400 mb-2 leading-relaxed">Fetch and convert an entire webpage. <br><span class="text-yellow-500/80">Note: Private/Localhost URLs are not supported due to CORS restrictions.</span></p>
+    <div class="rounded border border-figma-border bg-figma-surface focus-within:border-figma-blue transition-colors duration-200 flex items-center p-2">
+      <svg class="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+      <input 
+        type="url" 
+        id="url-input" 
+        class="w-full bg-transparent text-[11px] text-gray-200 placeholder-gray-500 focus:outline-none"
+        placeholder="https://example.com"
+        autocomplete="off"
+      >
+    </div>
   </div>
 
   <!-- Options -->
@@ -90,9 +111,13 @@
   <div class="flex-shrink-0 flex gap-2 mt-auto">
     <button 
       id="btn-import" 
-      class="flex-1 bg-figma-blue hover:bg-figma-blueHover text-white text-[11px] font-semibold py-2 px-3 rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-figma-bg focus:ring-figma-blue tracking-wide"
+      class="flex-1 flex justify-center items-center bg-figma-blue hover:bg-figma-blueHover text-white text-[11px] font-semibold py-2 px-3 rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-figma-bg focus:ring-figma-blue tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      Import to Canvas
+      <span id="btn-import-text">Import to Canvas</span>
+      <svg id="btn-import-spinner" class="hidden animate-spin ml-2 h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
     </button>
     <button 
       id="btn-cancel" 

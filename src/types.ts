@@ -62,6 +62,44 @@ export interface FlexLayoutProps {
   clipsContent?: boolean;
 }
 
+export interface ExtractedStyles {
+  width: number;
+  height: number;
+  viewportX: number;
+  viewportY: number;
+  isFlex: boolean;
+  isWidthAuto: boolean;
+  flexDirection?: 'ROW' | 'COLUMN';
+  paddingTop: number;
+  paddingRight: number;
+  paddingBottom: number;
+  paddingLeft: number;
+  gap?: number;
+  justifyContent?: 'FLEX_START' | 'FLEX_END' | 'CENTER' | 'SPACE_BETWEEN';
+  alignItems?: 'FLEX_START' | 'FLEX_END' | 'CENTER' | 'STRETCH';
+  backgroundColor?: RGBAColor;
+  gradientFill?: {
+    type: 'LINEAR';
+    angle: number; // degrees
+    stops: { color: RGBAColor; position: number }[];
+  };
+  imageUrls?: string[];
+  cornerRadius?: number;
+  strokeColor?: RGBAColor;
+  strokeWeight?: number;
+  strokeDashPattern?: number[];
+  strokeAlign?: 'INSIDE' | 'OUTSIDE' | 'CENTER';
+  boxShadow?: {
+    offsetX: number;
+    offsetY: number;
+    blur: number;
+    spread: number;
+    color: RGBAColor;
+  };
+  backgroundBlur?: number;
+  opacity?: number;
+}
+
 /**
  * Base interface shared by every node.
  */
@@ -75,6 +113,7 @@ export interface BaseFigmaNode {
     angle: number; // degrees
     stops: { color: RGBAColor; position: number }[];
   };
+  imageFills?: Uint8Array[];
   cornerRadius?: number;
   strokeColor?: RGBAColor;
   strokeWeight?: number;

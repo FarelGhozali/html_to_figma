@@ -135,6 +135,24 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
       frame.fills = []; // Ensure transparent background if none specified
     }
 
+    // Apply images (appended to fills)
+    if (nodeData.imageFills && nodeData.imageFills.length > 0) {
+      const currentFills = [...(frame.fills as readonly Paint[])];
+      for (const imgBuffer of nodeData.imageFills) {
+        try {
+          const image = figma.createImage(imgBuffer);
+          currentFills.push({
+            type: 'IMAGE',
+            scaleMode: 'FILL', // Use FILL so it covers the bounds, similar to object-fit: cover or background-size: cover
+            imageHash: image.hash
+          });
+        } catch (e) {
+          console.warn("Failed to create Figma image from buffer", e);
+        }
+      }
+      frame.fills = currentFills;
+    }
+
     // Apply opacity
     if (nodeData.opacity !== undefined && nodeData.opacity < 1) {
       frame.opacity = nodeData.opacity;
@@ -287,8 +305,9 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
 figma.ui.onmessage = async (msg) => {
   if (msg.type === 'import-json' && msg.data) {
     try {
-      // Parse the incoming JSON string from the UI
-      const nodeData = JSON.parse(msg.data);
+      // The incoming msg.data is already an object (passed natively via Structured Clone algorithm)
+      // This preserves our Uint8Array objects perfectly!
+      const nodeData = msg.data;
       
       // Generate UI asynchronously
       const newNode = await generateFigmaUI(nodeData, figma.currentPage);

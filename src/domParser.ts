@@ -252,6 +252,29 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     }
   }
 
+  // Background Image (url(...))
+  if (bgImage && bgImage !== 'none' && bgImage.includes('url(')) {
+    // There can be multiple comma-separated background images, but we'll extract all url() contents
+    const urlRegex = /url\(['"]?(.*?)['"]?\)/g;
+    let urlMatch;
+    while ((urlMatch = urlRegex.exec(bgImage)) !== null) {
+      if (urlMatch[1] && !urlMatch[1].startsWith('data:')) {
+        if (!result.imageUrls) result.imageUrls = [];
+        result.imageUrls.push(urlMatch[1]);
+      }
+    }
+  }
+
+  // <img src="..."> tags
+  if (element.tagName.toLowerCase() === 'img') {
+    const src = (element as HTMLImageElement).src;
+    // Discard base64 inline images for now as they are too huge and can cause postMessage to fail if very large
+    if (src && !src.startsWith('data:')) {
+      if (!result.imageUrls) result.imageUrls = [];
+      result.imageUrls.push(src);
+    }
+  }
+
   // Box shadow
   if (style.boxShadow && style.boxShadow !== 'none') {
     // Parse: rgba(0, 0, 0, 0.1) 0px 10px 30px 0px
@@ -449,6 +472,12 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         boxShadow: extractedStyles.boxShadow,
         backgroundBlur: extractedStyles.backgroundBlur,
         opacity: extractedStyles.opacity,
+        // Hack: temporarily pass imageUrls via a custom property to be intercepted by ui.ts
+        // Since FigmaFrameNode interface requires exact types, we will just pass it, but to satisfy TS
+        // we added it to BaseFigmaNode in a previous step? Wait, no, we only added imageFills to BaseFigmaNode.
+        // Let's check: types.ts currently doesn't have imageUrls in BaseFigmaNode, only in ExtractedStyles.
+        // We should just cast it to any or add it to BaseFigmaNode.
+        ...(extractedStyles.imageUrls && { imageUrls: extractedStyles.imageUrls } as any),
         layout: {
           widthMode: 'FIXED', 
           heightMode: 'FIXED',

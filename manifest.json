@@ -10,12 +10,10 @@
     "figma"
   ],
   "networkAccess": {
-    "allowedDomains": ["none"],
+    "allowedDomains": ["*"],
+    "reasoning": "This plugin fetches HTML and external assets (images, CSS) from user-provided URLs to convert entire webpages into Figma designs.",
     "devAllowedDomains": [
-      "http://localhost:8080",
-      "https://cdn.tailwindcss.com",
-      "https://fonts.googleapis.com",
-      "https://fonts.gstatic.com"
+      "http://localhost:8080"
     ]
   }
 }

@@ -304,9 +304,6 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
       const extractedStyles = extractFigmaStyles(el);
       const win = el.ownerDocument.defaultView || window;
       const style = win.getComputedStyle(el);
-      
-      const isFrameShrinkToFit = extractedStyles.isWidthAuto && 
-        (style.display.includes('inline') || style.position === 'absolute' || style.position === 'fixed');
 
       const frameNode: FigmaFrameNode = {
         type: 'FRAME',
@@ -316,8 +313,8 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         strokeColor: extractedStyles.strokeColor,
         strokeWeight: extractedStyles.strokeWeight,
         layout: {
-          widthMode: isFrameShrinkToFit ? 'HUG' : 'FIXED', 
-          heightMode: isFrameShrinkToFit ? 'HUG' : 'FIXED',
+          widthMode: 'FIXED', 
+          heightMode: 'FIXED',
           width: extractedStyles.width,
           height: extractedStyles.height,
           flexDirection: extractedStyles.flexDirection,
@@ -326,6 +323,7 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
           paddingRight: extractedStyles.paddingRight,
           paddingBottom: extractedStyles.paddingBottom,
           paddingLeft: extractedStyles.paddingLeft,
+          clipsContent: style.overflow.includes('hidden') || style.overflow.includes('scroll') || style.overflow.includes('auto'),
           justifyContent: extractedStyles.justifyContent,
           alignItems: extractedStyles.alignItems,
           positioning: extractedStyles.positioning,

@@ -57,6 +57,9 @@ export interface FlexLayoutProps {
   // Coordinates for absolute positioning relative to parent
   x?: number;
   y?: number;
+  
+  // Whether the frame clips its children (overflow: hidden)
+  clipsContent?: boolean;
 }
 
 /**

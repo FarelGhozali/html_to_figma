@@ -111,6 +111,9 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
     // Apply layout to parent first before populating children
     applyLayout(frame, nodeData.layout);
 
+    // Apply clipsContent (overflow behavior)
+    frame.clipsContent = nodeData.layout.clipsContent === true;
+
     // Recursive iteration for each child
     if (nodeData.children && nodeData.children.length > 0) {
       for (const childData of nodeData.children) {

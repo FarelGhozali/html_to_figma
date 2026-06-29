@@ -34,7 +34,6 @@ if (btnImport) {
           * {
             animation: none !important;
             transition: none !important;
-            opacity: 1 !important;
             transform: none !important;
           }
         </style>

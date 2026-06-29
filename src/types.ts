@@ -70,11 +70,25 @@ export interface BaseFigmaNode {
   name?: string;
   layout: FlexLayoutProps;
   backgroundColor?: RGBAColor;
+  gradientFill?: {
+    type: 'LINEAR';
+    angle: number; // degrees
+    stops: { color: RGBAColor; position: number }[];
+  };
   cornerRadius?: number;
   strokeColor?: RGBAColor;
   strokeWeight?: number;
   strokeDashPattern?: number[];
   strokeAlign?: 'INSIDE' | 'OUTSIDE' | 'CENTER';
+  boxShadow?: {
+    offsetX: number;
+    offsetY: number;
+    blur: number;
+    spread: number;
+    color: RGBAColor;
+  };
+  backgroundBlur?: number;
+  opacity?: number;
 }
 
 /**

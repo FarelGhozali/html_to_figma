@@ -101,10 +101,75 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
     createdNode = frame;
     
     if (nodeData.name) frame.name = nodeData.name;
-    if (nodeData.backgroundColor) {
+    
+    // Apply fills (solid color or gradient)
+    if (nodeData.gradientFill && nodeData.gradientFill.stops.length >= 2) {
+      // Convert CSS angle to Figma gradient transform
+      // CSS: 0deg = bottom-to-top, 90deg = left-to-right, 135deg = top-left to bottom-right
+      const angleDeg = nodeData.gradientFill.angle;
+      const angleRad = (angleDeg - 90) * (Math.PI / 180); // CSS to standard math angle
+      
+      const cos = Math.cos(angleRad);
+      const sin = Math.sin(angleRad);
+      
+      // Figma gradient transform is a 2x3 matrix mapping from gradient space to object space
+      // For a linear gradient, we need to define start and end points
+      const cx = 0.5, cy = 0.5; // Center of the gradient
+      const startX = cx - cos * 0.5;
+      const startY = cy - sin * 0.5;
+      
+      frame.fills = [{
+        type: 'GRADIENT_LINEAR',
+        gradientTransform: [
+          [cos, sin, startX],
+          [-sin, cos, startY]
+        ],
+        gradientStops: nodeData.gradientFill.stops.map(stop => ({
+          color: { r: stop.color.r, g: stop.color.g, b: stop.color.b, a: stop.color.a !== undefined ? stop.color.a : 1 },
+          position: stop.position
+        }))
+      }];
+    } else if (nodeData.backgroundColor) {
       frame.fills = [createSolidPaint(nodeData.backgroundColor)];
     } else {
       frame.fills = []; // Ensure transparent background if none specified
+    }
+
+    // Apply opacity
+    if (nodeData.opacity !== undefined && nodeData.opacity < 1) {
+      frame.opacity = nodeData.opacity;
+    }
+
+    // Apply effects (shadows and blur)
+    const effects: Effect[] = [];
+    
+    if (nodeData.boxShadow) {
+      effects.push({
+        type: 'DROP_SHADOW',
+        color: {
+          r: nodeData.boxShadow.color.r,
+          g: nodeData.boxShadow.color.g,
+          b: nodeData.boxShadow.color.b,
+          a: nodeData.boxShadow.color.a !== undefined ? nodeData.boxShadow.color.a : 1
+        },
+        offset: { x: nodeData.boxShadow.offsetX, y: nodeData.boxShadow.offsetY },
+        radius: nodeData.boxShadow.blur,
+        spread: nodeData.boxShadow.spread,
+        visible: true,
+        blendMode: 'NORMAL'
+      });
+    }
+
+    if (nodeData.backgroundBlur && nodeData.backgroundBlur > 0) {
+      effects.push({
+        type: 'BACKGROUND_BLUR',
+        radius: nodeData.backgroundBlur,
+        visible: true
+      });
+    }
+
+    if (effects.length > 0) {
+      frame.effects = effects;
     }
 
     if (nodeData.cornerRadius !== undefined && nodeData.cornerRadius > 0) {

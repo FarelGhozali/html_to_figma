@@ -23,7 +23,13 @@ export interface ExtractedStyles {
   fontWeight?: string;
   color?: { r: number; g: number; b: number; a: number }; // Figma RGB 0-1
   lineHeight?: number;
+  letterSpacing?: number;
   backgroundColor?: { r: number; g: number; b: number; a: number };
+  gradientFill?: {
+    type: 'LINEAR';
+    angle: number;
+    stops: { color: { r: number; g: number; b: number; a: number }; position: number }[];
+  };
   justifyContent?: 'FLEX_START' | 'FLEX_END' | 'CENTER' | 'SPACE_BETWEEN';
   alignItems?: 'FLEX_START' | 'FLEX_END' | 'CENTER' | 'STRETCH';
   positioning?: 'AUTO' | 'ABSOLUTE';
@@ -32,6 +38,15 @@ export interface ExtractedStyles {
   strokeWeight?: number;
   strokeDashPattern?: number[];
   strokeAlign?: 'INSIDE' | 'OUTSIDE' | 'CENTER';
+  boxShadow?: {
+    offsetX: number;
+    offsetY: number;
+    blur: number;
+    spread: number;
+    color: { r: number; g: number; b: number; a: number };
+  };
+  backgroundBlur?: number;
+  opacity?: number;
 }
 
 /**
@@ -195,10 +210,85 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     }
   }
 
+  // Background color (solid)
   if (style.backgroundColor && style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent') {
     const parsedColor = rgbaToFigmaColor(style.backgroundColor);
-    if (parsedColor) {
+    // Also check for CSS4 format: rgba(0 0 0 / 0) which our regex matches but results in a=0
+    if (parsedColor && parsedColor.a > 0) {
       result.backgroundColor = parsedColor;
+    }
+  }
+
+  // Gradient background (linear-gradient)
+  const bgImage = style.backgroundImage;
+  if (bgImage && bgImage !== 'none' && bgImage.includes('linear-gradient')) {
+    // Parse: linear-gradient(135deg, rgb(240, 171, 252), rgb(59, 130, 246))
+    // The browser computes hex colors to rgb() format
+    const angleMatch = bgImage.match(/linear-gradient\(\s*(\d+)deg/);
+    const angle = angleMatch ? parseInt(angleMatch[1], 10) : 180;
+
+    // Extract all color stops
+    const colorStopRegex = /rgba?\([^)]+\)(?:\s+[\d.]+%)?/g;
+    const colorMatches = bgImage.match(colorStopRegex);
+    
+    if (colorMatches && colorMatches.length >= 2) {
+      const stops: { color: { r: number; g: number; b: number; a: number }; position: number }[] = [];
+      
+      for (let i = 0; i < colorMatches.length; i++) {
+        const colorStr = colorMatches[i];
+        const parsedColor = rgbaToFigmaColor(colorStr);
+        // Extract position percentage if present, otherwise distribute evenly
+        const posMatch = colorStr.match(/([\d.]+)%/);
+        const position = posMatch ? parseFloat(posMatch[1]) / 100 : i / (colorMatches.length - 1);
+        
+        if (parsedColor) {
+          stops.push({ color: parsedColor, position });
+        }
+      }
+
+      if (stops.length >= 2) {
+        result.gradientFill = { type: 'LINEAR', angle, stops };
+      }
+    }
+  }
+
+  // Box shadow
+  if (style.boxShadow && style.boxShadow !== 'none') {
+    // Parse: rgba(0, 0, 0, 0.1) 0px 10px 30px 0px
+    // or: rgb(0 0 0 / 0.1) 0px 10px 30px 0px
+    const shadowColorMatch = style.boxShadow.match(/rgba?\([^)]+\)/);
+    if (shadowColorMatch) {
+      const shadowColor = rgbaToFigmaColor(shadowColorMatch[0]);
+      // Extract numeric values after the color
+      const afterColor = style.boxShadow.substring(shadowColorMatch.index! + shadowColorMatch[0].length);
+      const nums = afterColor.match(/-?[\d.]+px/g);
+      
+      if (shadowColor && nums && nums.length >= 2) {
+        result.boxShadow = {
+          offsetX: parsePx(nums[0]),
+          offsetY: parsePx(nums[1]),
+          blur: nums[2] ? parsePx(nums[2]) : 0,
+          spread: nums[3] ? parsePx(nums[3]) : 0,
+          color: shadowColor
+        };
+      }
+    }
+  }
+
+  // Backdrop filter (blur effect for glassmorphism)
+  const backdropFilter = style.backdropFilter || (style as any).webkitBackdropFilter;
+  if (backdropFilter && backdropFilter !== 'none') {
+    const blurMatch = backdropFilter.match(/blur\(([\d.]+)px\)/);
+    if (blurMatch) {
+      result.backgroundBlur = parseFloat(blurMatch[1]);
+    }
+  }
+
+  // Element opacity
+  if (style.opacity && style.opacity !== '1') {
+    const opacityVal = parseFloat(style.opacity);
+    if (!isNaN(opacityVal) && opacityVal < 1) {
+      result.opacity = opacityVal;
     }
   }
 
@@ -350,11 +440,15 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         type: 'FRAME',
         name: el.id ? `#${el.id}` : tagName,
         backgroundColor: extractedStyles.backgroundColor,
+        gradientFill: extractedStyles.gradientFill,
         cornerRadius: extractedStyles.cornerRadius,
         strokeColor: extractedStyles.strokeColor,
         strokeWeight: extractedStyles.strokeWeight,
         strokeDashPattern: extractedStyles.strokeDashPattern,
         strokeAlign: extractedStyles.strokeAlign,
+        boxShadow: extractedStyles.boxShadow,
+        backgroundBlur: extractedStyles.backgroundBlur,
+        opacity: extractedStyles.opacity,
         layout: {
           widthMode: 'FIXED', 
           heightMode: 'FIXED',

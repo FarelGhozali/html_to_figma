@@ -115,8 +115,8 @@ function parsePx(value: string | null | undefined): number {
  * Converts a browser CSS color string (rgb, rgba) to Figma's 0-1 RGBA format.
  */
 export function rgbaToFigmaColor(rgbaString: string) {
-  // Matches rgb(r, g, b) or rgba(r, g, b, a)
-  const match = rgbaString.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+  // Matches rgb/rgba with commas (CSS3) or spaces (CSS4), e.g., rgb(255, 255, 255) or rgb(255 255 255) or rgba(255 255 255 / 0.5)
+  const match = rgbaString.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:(?:,|\/)\s*([\d.]+))?\s*\)/);
   if (!match) return undefined;
 
   const r = parseInt(match[1], 10) / 255;
@@ -223,8 +223,9 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
       break;
     }
   }
-
-  if (hasText) {
+  // 4. Extract Text Styles (Always extract for elements that typically contain text or if hasText is true)
+  const isTextElement = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'SPAN', 'A', 'STRONG', 'B', 'EM', 'I', 'BUTTON', 'LABEL'].includes(element.tagName);
+  if (hasText || isTextElement) {
     // Parse font-family: get first font and map generics
     let family = style.fontFamily.replace(/['"]/g, '').split(',')[0].trim();
     if (family.toLowerCase() === 'sans-serif') family = 'Arial';
@@ -233,22 +234,34 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     result.fontFamily = family;
 
     result.fontSize = parsePx(style.fontSize);
+
+    // Extract font-weight properly
+    let weight = style.fontWeight;
+    if (weight === 'bold') weight = '700';
+    else if (weight === 'normal') weight = '400';
     
-    // Map CSS font-weight to Figma font style
-    let fw = style.fontWeight;
-    if (fw === 'normal' || fw === '400') fw = 'Regular';
-    else if (fw === 'bold' || fw === '700') fw = 'Bold';
-    else if (fw === '500') fw = 'Medium';
-    else if (fw === '600') fw = 'Semi Bold';
-    else if (fw === '300') fw = 'Light';
-    else if (fw === '800') fw = 'Extra Bold';
-    else if (fw === '900') fw = 'Black';
-    result.fontWeight = fw;
-    
+    // Map numerical weights to Figma strings
+    const weightNum = parseInt(weight, 10);
+    if (!isNaN(weightNum)) {
+      if (weightNum <= 300) result.fontWeight = 'Light';
+      else if (weightNum === 400) result.fontWeight = 'Regular';
+      else if (weightNum === 500) result.fontWeight = 'Medium';
+      else if (weightNum === 600) result.fontWeight = 'SemiBold';
+      else if (weightNum === 700) result.fontWeight = 'Bold';
+      else if (weightNum >= 800) result.fontWeight = 'ExtraBold';
+      else result.fontWeight = 'Regular';
+    } else {
+      result.fontWeight = 'Regular';
+    }
+
     if (style.lineHeight && style.lineHeight !== 'normal') {
       result.lineHeight = parsePx(style.lineHeight);
     }
-    
+
+    if (style.letterSpacing && style.letterSpacing !== 'normal') {
+      result.letterSpacing = parsePx(style.letterSpacing);
+    }
+
     if (style.color) {
       const parsedColor = rgbaToFigmaColor(style.color);
       if (parsedColor) {

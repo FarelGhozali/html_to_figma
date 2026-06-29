@@ -12,7 +12,10 @@
   "networkAccess": {
     "allowedDomains": ["none"],
     "devAllowedDomains": [
-      "http://localhost:8080"
+      "http://localhost:8080",
+      "https://cdn.tailwindcss.com",
+      "https://fonts.googleapis.com",
+      "https://fonts.gstatic.com"
     ]
   }
 }

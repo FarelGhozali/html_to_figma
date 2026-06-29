@@ -29,8 +29,8 @@ if (btnImport) {
       frameDoc.write(htmlData);
       frameDoc.close();
 
-      // Wait a bit for browser to calculate styles
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Wait for browser to load external CSS (like Google Fonts) and calculate styles
+      await new Promise(resolve => setTimeout(resolve, 600));
 
       // 3. Extract JSON using domParser
       const figmaNodeData = await generateFigmaJSON(frameDoc.body);

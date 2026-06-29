@@ -95,6 +95,17 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
     if (nodeData.name) frame.name = nodeData.name;
     if (nodeData.backgroundColor) {
       frame.fills = [createSolidPaint(nodeData.backgroundColor)];
+    } else {
+      frame.fills = []; // Ensure transparent background if none specified
+    }
+
+    if (nodeData.cornerRadius !== undefined && nodeData.cornerRadius > 0) {
+      frame.cornerRadius = nodeData.cornerRadius;
+    }
+
+    if (nodeData.strokeColor && nodeData.strokeWeight !== undefined) {
+      frame.strokes = [createSolidPaint(nodeData.strokeColor)];
+      frame.strokeWeight = nodeData.strokeWeight;
     }
 
     // Apply layout to parent first before populating children
@@ -169,6 +180,18 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
 
   // Insert the created node into the parent
   parent.appendChild(createdNode);
+
+  // Apply layoutPositioning only AFTER appending, and only if parent is an Auto Layout frame
+  if (parent.type === 'FRAME' && parent.layoutMode !== 'NONE') {
+    if (nodeData.layout.positioning === 'ABSOLUTE') {
+      try {
+        createdNode.layoutPositioning = 'ABSOLUTE';
+      } catch (e) {
+        console.warn('Could not set layoutPositioning:', e);
+      }
+    }
+  }
+
   return createdNode;
 }
 
@@ -185,9 +208,9 @@ figma.ui.onmessage = async (msg) => {
       // Zoom to the newly created node
       figma.currentPage.selection = [newNode];
       figma.viewport.scrollAndZoomIntoView([newNode]);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to parse or generate UI:", e);
-      figma.notify("Error importing JSON. Make sure the JSON is valid.", { error: true });
+      figma.notify(`Error: ${e.message || e}`, { error: true });
     }
   }
 

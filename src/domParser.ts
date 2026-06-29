@@ -21,6 +21,12 @@ export interface ExtractedStyles {
   color?: { r: number; g: number; b: number; a: number }; // Figma RGB 0-1
   lineHeight?: number;
   backgroundColor?: { r: number; g: number; b: number; a: number };
+  justifyContent?: 'FLEX_START' | 'FLEX_END' | 'CENTER' | 'SPACE_BETWEEN';
+  alignItems?: 'FLEX_START' | 'FLEX_END' | 'CENTER' | 'STRETCH';
+  positioning?: 'AUTO' | 'ABSOLUTE';
+  cornerRadius?: number;
+  strokeColor?: { r: number; g: number; b: number; a: number };
+  strokeWeight?: number;
 }
 
 /**
@@ -135,7 +141,8 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     paddingRight: parsePx(style.paddingRight),
     paddingBottom: parsePx(style.paddingBottom),
     paddingLeft: parsePx(style.paddingLeft),
-    gap: parsePx(style.gap)
+    gap: parsePx(style.gap),
+    positioning: (style.position === 'absolute' || style.position === 'fixed') ? 'ABSOLUTE' : 'AUTO'
   };
 
   if (style.backgroundColor && style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent') {
@@ -145,8 +152,34 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     }
   }
 
+  if (style.borderRadius) {
+    const radius = parsePx(style.borderRadius);
+    if (radius > 0) result.cornerRadius = radius;
+  }
+
+  if (style.borderWidth && style.borderWidth !== '0px') {
+    const weight = parsePx(style.borderWidth);
+    if (weight > 0) {
+      result.strokeWeight = weight;
+      if (style.borderColor) {
+        const parsedStroke = rgbaToFigmaColor(style.borderColor);
+        if (parsedStroke) result.strokeColor = parsedStroke;
+      }
+    }
+  }
+
   if (result.isFlex) {
     result.flexDirection = style.flexDirection === 'column' ? 'COLUMN' : 'ROW';
+
+    if (style.justifyContent === 'flex-end') result.justifyContent = 'FLEX_END';
+    else if (style.justifyContent === 'center') result.justifyContent = 'CENTER';
+    else if (style.justifyContent === 'space-between') result.justifyContent = 'SPACE_BETWEEN';
+    else result.justifyContent = 'FLEX_START';
+
+    if (style.alignItems === 'flex-end') result.alignItems = 'FLEX_END';
+    else if (style.alignItems === 'center') result.alignItems = 'CENTER';
+    else if (style.alignItems === 'stretch') result.alignItems = 'STRETCH';
+    else result.alignItems = 'FLEX_START';
   }
 
   // Check if it has any text nodes as direct children to extract typography
@@ -227,6 +260,9 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         type: 'FRAME',
         name: el.id ? `#${el.id}` : tagName,
         backgroundColor: extractedStyles.backgroundColor,
+        cornerRadius: extractedStyles.cornerRadius,
+        strokeColor: extractedStyles.strokeColor,
+        strokeWeight: extractedStyles.strokeWeight,
         layout: {
           widthMode: 'FIXED', 
           heightMode: 'FIXED',
@@ -238,6 +274,9 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
           paddingRight: extractedStyles.paddingRight,
           paddingBottom: extractedStyles.paddingBottom,
           paddingLeft: extractedStyles.paddingLeft,
+          justifyContent: extractedStyles.justifyContent,
+          alignItems: extractedStyles.alignItems,
+          positioning: extractedStyles.positioning,
         },
         children: []
       };

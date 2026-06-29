@@ -50,6 +50,9 @@ export interface FlexLayoutProps {
   
   // Equivalent to align-items
   alignItems?: 'FLEX_START' | 'FLEX_END' | 'CENTER' | 'STRETCH';
+  
+  // Equivalent to position: absolute or fixed
+  positioning?: 'AUTO' | 'ABSOLUTE';
 }
 
 /**
@@ -60,6 +63,9 @@ export interface BaseFigmaNode {
   name?: string;
   layout: FlexLayoutProps;
   backgroundColor?: RGBAColor;
+  cornerRadius?: number;
+  strokeColor?: RGBAColor;
+  strokeWeight?: number;
 }
 
 /**

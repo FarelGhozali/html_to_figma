@@ -186,8 +186,10 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
     if (nodeData.layout.positioning === 'ABSOLUTE') {
       try {
         createdNode.layoutPositioning = 'ABSOLUTE';
+        if (nodeData.layout.x !== undefined) createdNode.x = nodeData.layout.x;
+        if (nodeData.layout.y !== undefined) createdNode.y = nodeData.layout.y;
       } catch (e) {
-        console.warn('Could not set layoutPositioning:', e);
+        console.warn('Could not set absolute layout properties:', e);
       }
     }
   }

@@ -53,6 +53,10 @@ export interface FlexLayoutProps {
   
   // Equivalent to position: absolute or fixed
   positioning?: 'AUTO' | 'ABSOLUTE';
+  
+  // Coordinates for absolute positioning relative to parent
+  x?: number;
+  y?: number;
 }
 
 /**

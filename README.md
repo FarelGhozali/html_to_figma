@@ -60,6 +60,11 @@ Before you begin, ensure you have met the following requirements:
    ```
    > The compiled files will be generated in the `dist/` directory.
 
+### Development Workflow & Caching
+When running `npm run dev`, Vite will automatically recompile your TypeScript files upon saving. However, due to Figma's strict sandbox caching:
+- Changes to the **UI** (`ui.html`, `ui.ts`) might require you to close and reopen the plugin window, depending on your setup.
+- Changes to the **Core Logic** (`code.ts`, `domParser.ts`) **strictly require** you to close the plugin window and reopen it (`Plugins > Development > HTML to Figma`) for Figma to load the new `code.js` bundle.
+
 ---
 
 ## How to Use
@@ -84,9 +89,8 @@ Click **Import to Canvas**, and the plugin will magically generate a Figma Frame
 
 ## Known Limitations
 
-Translating web DOM to Figma is highly complex. Currently, the plugin excels at Flexbox but has a few limitations:
-- **CSS Grid**: Not currently supported (mapped to standard frames).
-- **Absolute Positioning**: Elements with `position: absolute` may not align perfectly within Auto Layout frames.
+Translating web DOM to Figma is highly complex. Currently, the plugin excels at Flexbox and basic styling, but has a few limitations:
+- **CSS Grid**: Not currently supported (mapped to standard Auto Layout frames).
 - **Complex Pseudo-elements**: `::before` and `::after` are ignored.
 - **Images/SVG**: `<img>` tags and inline `<svg>` are currently skipped and need manual insertion.
 

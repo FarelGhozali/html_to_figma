@@ -8,6 +8,8 @@ export interface DOMNodeHierarchy {
 export interface ExtractedStyles {
   width: number;
   height: number;
+  viewportX: number;
+  viewportY: number;
   isFlex: boolean;
   flexDirection?: 'ROW' | 'COLUMN';
   paddingTop: number;
@@ -60,8 +62,7 @@ export function traverseDOM(element: Element | Node): DOMNodeHierarchy | null {
       const style = window.getComputedStyle(el);
       if (
         style.display === 'none' ||
-        style.visibility === 'hidden' ||
-        parseFloat(style.opacity || '1') === 0
+        style.visibility === 'hidden'
       ) {
         return null; // Skip this element and all its children
       }
@@ -136,6 +137,8 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
   const result: ExtractedStyles = {
     width: rect.width,
     height: rect.height,
+    viewportX: rect.left,
+    viewportY: rect.top,
     isFlex: style.display === 'flex' || style.display === 'inline-flex',
     paddingTop: parsePx(style.paddingTop),
     paddingRight: parsePx(style.paddingRight),
@@ -244,8 +247,7 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         const style = win.getComputedStyle(el);
         if (
           style.display === 'none' ||
-          style.visibility === 'hidden' ||
-          parseFloat(style.opacity || '1') === 0
+          style.visibility === 'hidden'
         ) {
           return null;
         }
@@ -277,6 +279,8 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
           justifyContent: extractedStyles.justifyContent,
           alignItems: extractedStyles.alignItems,
           positioning: extractedStyles.positioning,
+          x: el.parentElement ? extractedStyles.viewportX - el.parentElement.getBoundingClientRect().left : 0,
+          y: el.parentElement ? extractedStyles.viewportY - el.parentElement.getBoundingClientRect().top : 0,
         },
         children: []
       };

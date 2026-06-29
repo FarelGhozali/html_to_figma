@@ -27,6 +27,19 @@ if (btnImport) {
 
       frameDoc.open();
       frameDoc.write(htmlData);
+      
+      // Inject CSS to disable animations and force elements to their final visual state
+      frameDoc.write(`
+        <style>
+          * {
+            animation: none !important;
+            transition: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+          }
+        </style>
+      `);
+      
       frameDoc.close();
 
       // Wait for browser to load external CSS (like Google Fonts) and calculate styles

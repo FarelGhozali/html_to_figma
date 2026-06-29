@@ -166,17 +166,33 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     positioning: (style.position === 'absolute' || style.position === 'fixed') ? 'ABSOLUTE' : 'AUTO'
   };
 
-  // Heuristic: If it's a block container (not flex), simulate vertical spacing (margins) as gap
-  if (!result.isFlex && element.children.length > 1) {
-    let maxMargin = 0;
-    for (let i = 0; i < element.children.length; i++) {
-      const childStyle = win.getComputedStyle(element.children[i]);
-      const mb = parsePx(childStyle.marginBottom);
-      const mt = parsePx(childStyle.marginTop);
-      if (mb > maxMargin) maxMargin = mb;
-      if (mt > maxMargin) maxMargin = mt;
+  // Compute actual effective gap from rendered child positions.
+  // This accounts for CSS gap + child margins combined, giving accurate spacing.
+  if (element.children.length > 1) {
+    let totalGap = 0;
+    let gapCount = 0;
+
+    for (let i = 0; i < element.children.length - 1; i++) {
+      const currentRect = element.children[i].getBoundingClientRect();
+      const nextRect = element.children[i + 1].getBoundingClientRect();
+
+      let measuredGap: number;
+      if (result.isFlex && result.flexDirection === 'ROW') {
+        measuredGap = nextRect.left - currentRect.right;
+      } else {
+        // Column flex or block containers: vertical gap
+        measuredGap = nextRect.top - currentRect.bottom;
+      }
+
+      if (measuredGap > 0) {
+        totalGap += measuredGap;
+        gapCount++;
+      }
     }
-    result.gap = maxMargin;
+
+    if (gapCount > 0) {
+      result.gap = Math.round(totalGap / gapCount);
+    }
   }
 
   if (style.backgroundColor && style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent') {

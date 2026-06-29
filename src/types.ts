@@ -73,7 +73,8 @@ export interface BaseFigmaNode {
   cornerRadius?: number;
   strokeColor?: RGBAColor;
   strokeWeight?: number;
-  strokeDashPattern?: readonly number[];
+  strokeDashPattern?: number[];
+  strokeAlign?: 'INSIDE' | 'OUTSIDE' | 'CENTER';
 }
 
 /**

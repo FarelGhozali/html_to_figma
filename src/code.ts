@@ -43,7 +43,7 @@ function applyLayout(node: FrameNode, layout: FlexLayoutProps) {
       case 'FLEX_START': node.counterAxisAlignItems = 'MIN'; break;
       case 'FLEX_END': node.counterAxisAlignItems = 'MAX'; break;
       case 'CENTER': node.counterAxisAlignItems = 'CENTER'; break;
-      // STRETCH is usually handled at the child level (layoutAlign = 'STRETCH')
+      case 'STRETCH': node.counterAxisAlignItems = 'MIN'; break; // Stretch is handled at child level
     }
   }
 
@@ -72,13 +72,21 @@ function applyLayout(node: FrameNode, layout: FlexLayoutProps) {
 /**
  * Apply child behavior inside Auto Layout (e.g. FILL CONTAINER).
  */
-function applyChildSizing(node: SceneNode, layout: FlexLayoutProps, parentLayoutMode: 'HORIZONTAL' | 'VERTICAL' | 'NONE') {
+function applyChildSizing(node: SceneNode, layout: FlexLayoutProps, parentLayoutMode: 'HORIZONTAL' | 'VERTICAL' | 'NONE', parentAlignItems?: string) {
   if (parentLayoutMode === 'HORIZONTAL') {
     if (layout.widthMode === 'FILL') node.layoutGrow = 1;
     if (layout.heightMode === 'FILL') node.layoutAlign = 'STRETCH';
+    // If parent has align-items: stretch (default in CSS flex), stretch children on cross axis
+    if (parentAlignItems === 'STRETCH' && layout.positioning !== 'ABSOLUTE') {
+      node.layoutAlign = 'STRETCH';
+    }
   } else if (parentLayoutMode === 'VERTICAL') {
     if (layout.heightMode === 'FILL') node.layoutGrow = 1;
     if (layout.widthMode === 'FILL') node.layoutAlign = 'STRETCH';
+    // If parent has align-items: stretch (default in CSS flex), stretch children on cross axis
+    if (parentAlignItems === 'STRETCH' && layout.positioning !== 'ABSOLUTE') {
+      node.layoutAlign = 'STRETCH';
+    }
   }
 }
 
@@ -106,8 +114,15 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
     if (nodeData.strokeColor && nodeData.strokeWeight !== undefined) {
       frame.strokes = [createSolidPaint(nodeData.strokeColor)];
       frame.strokeWeight = nodeData.strokeWeight;
-      if (nodeData.strokeDashPattern) {
+      
+      // Apply dashed/dotted stroke pattern
+      if (nodeData.strokeDashPattern && nodeData.strokeDashPattern.length > 0) {
         frame.dashPattern = nodeData.strokeDashPattern;
+      }
+      
+      // Apply stroke alignment (INSIDE, OUTSIDE, CENTER)
+      if (nodeData.strokeAlign) {
+        frame.strokeAlign = nodeData.strokeAlign;
       }
     }
 
@@ -122,7 +137,7 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
       for (const childData of nodeData.children) {
         const childNode = await generateFigmaUI(childData, frame);
         // Apply responsive child behavior relative to its parent frame
-        applyChildSizing(childNode, childData.layout, frame.layoutMode);
+        applyChildSizing(childNode, childData.layout, frame.layoutMode, nodeData.layout.alignItems);
       }
     }
 
@@ -178,8 +193,6 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
       textNode.resize(nodeData.layout.width, textNode.height);
     } else if (nodeData.layout.widthMode === 'HUG') {
       textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
-    } else if (nodeData.layout.widthMode === 'FILL') {
-      textNode.textAutoResize = 'HEIGHT';
     }
 
   } else {

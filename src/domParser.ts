@@ -30,7 +30,8 @@ export interface ExtractedStyles {
   cornerRadius?: number;
   strokeColor?: { r: number; g: number; b: number; a: number };
   strokeWeight?: number;
-  strokeDashPattern?: readonly number[];
+  strokeDashPattern?: number[];
+  strokeAlign?: 'INSIDE' | 'OUTSIDE' | 'CENTER';
 }
 
 /**
@@ -194,14 +195,19 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     const weight = parsePx(style.borderWidth);
     if (weight > 0) {
       result.strokeWeight = weight;
+      result.strokeAlign = 'INSIDE'; // CSS borders are always inside
       if (style.borderColor) {
         const parsedStroke = rgbaToFigmaColor(style.borderColor);
         if (parsedStroke) result.strokeColor = parsedStroke;
       }
-      if (style.borderStyle === 'dashed') {
+      // Extract border-style for dashed/dotted patterns
+      const borderStyle = style.borderStyle;
+      if (borderStyle === 'dashed') {
+        // Dashed: segments roughly 3x the stroke weight, gaps 3x the stroke weight
         result.strokeDashPattern = [weight * 3, weight * 3];
-      } else if (style.borderStyle === 'dotted') {
-        result.strokeDashPattern = [weight, weight * 2];
+      } else if (borderStyle === 'dotted') {
+        // Dotted: segments equal to stroke weight, gaps equal to stroke weight
+        result.strokeDashPattern = [weight, weight];
       }
     }
   }
@@ -216,8 +222,8 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
 
     if (style.alignItems === 'flex-end') result.alignItems = 'FLEX_END';
     else if (style.alignItems === 'center') result.alignItems = 'CENTER';
-    else if (style.alignItems === 'stretch') result.alignItems = 'STRETCH';
-    else result.alignItems = 'FLEX_START';
+    else if (style.alignItems === 'flex-start') result.alignItems = 'FLEX_START';
+    else result.alignItems = 'STRETCH'; // CSS default align-items is 'stretch'
   }
 
   // Check if it has any text nodes as direct children to extract typography
@@ -332,6 +338,7 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         strokeColor: extractedStyles.strokeColor,
         strokeWeight: extractedStyles.strokeWeight,
         strokeDashPattern: extractedStyles.strokeDashPattern,
+        strokeAlign: extractedStyles.strokeAlign,
         layout: {
           widthMode: 'FIXED', 
           heightMode: 'FIXED',

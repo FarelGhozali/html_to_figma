@@ -11,6 +11,7 @@ export interface ExtractedStyles {
   viewportX: number;
   viewportY: number;
   isFlex: boolean;
+  isWidthAuto: boolean;
   flexDirection?: 'ROW' | 'COLUMN';
   paddingTop: number;
   paddingRight: number;
@@ -133,6 +134,20 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
   const rect = element.getBoundingClientRect();
   const win = element.ownerDocument.defaultView || window;
   const style = win.getComputedStyle(element);
+  
+  // Detect if width is naturally 'auto' (shrink-to-fit or stretch)
+  // We do this by temporarily overriding width to auto and seeing if the computed width changes
+  const originalWidth = (element as HTMLElement).style.getPropertyValue('width');
+  const originalWidthPriority = (element as HTMLElement).style.getPropertyPriority('width');
+  
+  (element as HTMLElement).style.setProperty('width', 'auto', 'important');
+  const autoStyle = win.getComputedStyle(element);
+  const autoWidth = autoStyle.width;
+  
+  (element as HTMLElement).style.setProperty('width', originalWidth, originalWidthPriority);
+  if (!originalWidth) (element as HTMLElement).style.removeProperty('width');
+  
+  const isWidthAuto = Math.abs(parseFloat(style.width) - parseFloat(autoWidth)) < 1;
 
   const result: ExtractedStyles = {
     width: rect.width,
@@ -140,6 +155,7 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     viewportX: rect.left,
     viewportY: rect.top,
     isFlex: style.display === 'flex' || style.display === 'inline-flex',
+    isWidthAuto: isWidthAuto,
     paddingTop: parsePx(style.paddingTop),
     paddingRight: parsePx(style.paddingRight),
     paddingBottom: parsePx(style.paddingBottom),
@@ -286,7 +302,12 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
 
       // Valid Element -> Map to FRAME
       const extractedStyles = extractFigmaStyles(el);
+      const win = el.ownerDocument.defaultView || window;
+      const style = win.getComputedStyle(el);
       
+      const isFrameShrinkToFit = extractedStyles.isWidthAuto && 
+        (style.display.includes('inline') || style.position === 'absolute' || style.position === 'fixed');
+
       const frameNode: FigmaFrameNode = {
         type: 'FRAME',
         name: el.id ? `#${el.id}` : tagName,
@@ -295,8 +316,8 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         strokeColor: extractedStyles.strokeColor,
         strokeWeight: extractedStyles.strokeWeight,
         layout: {
-          widthMode: 'FIXED', 
-          heightMode: 'FIXED',
+          widthMode: isFrameShrinkToFit ? 'HUG' : 'FIXED', 
+          heightMode: isFrameShrinkToFit ? 'HUG' : 'FIXED',
           width: extractedStyles.width,
           height: extractedStyles.height,
           flexDirection: extractedStyles.flexDirection,
@@ -332,13 +353,31 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
       if (!parentEl) return null;
 
       const parentStyles = extractFigmaStyles(parentEl);
+
+      // Text wraps (FILL) if parent width is not auto (explicit width), OR if parent is a block element stretching to fill.
+      // Actually, if parent isWidthAuto is TRUE, and parent is block, parent fills available space, so text should ALSO wrap!
+      // The ONLY time text should NOT wrap (HUG) is if parent is shrink-to-fit (isWidthAuto AND (inline or absolute or float)).
+      let textWidthMode: 'HUG' | 'FILL' | 'FIXED' = 'FILL';
+      const win = parentEl.ownerDocument.defaultView || window;
+      const pDisplay = win.getComputedStyle(parentEl).display;
+      const pPosition = win.getComputedStyle(parentEl).position;
       
+      const isShrinkToFit = parentStyles.isWidthAuto && 
+        (pDisplay.includes('inline') || pPosition === 'absolute' || pPosition === 'fixed');
+
+      // Flex items shrink to fit their content by default, so text in flex should HUG.
+      if (parentStyles.isFlex) {
+        textWidthMode = 'HUG';
+      } else if (isShrinkToFit) {
+        textWidthMode = 'HUG';
+      }
+
       const textNode: FigmaTextNode = {
         type: 'TEXT',
         name: 'Text',
         characters: textContent.trim(),
         layout: {
-          widthMode: 'HUG',
+          widthMode: textWidthMode,
           heightMode: 'HUG'
         },
         typography: {

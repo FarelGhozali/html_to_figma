@@ -148,6 +148,19 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     positioning: (style.position === 'absolute' || style.position === 'fixed') ? 'ABSOLUTE' : 'AUTO'
   };
 
+  // Heuristic: If it's a block container (not flex), simulate vertical spacing (margins) as gap
+  if (!result.isFlex && element.children.length > 1) {
+    let maxMargin = 0;
+    for (let i = 0; i < element.children.length; i++) {
+      const childStyle = win.getComputedStyle(element.children[i]);
+      const mb = parsePx(childStyle.marginBottom);
+      const mt = parsePx(childStyle.marginTop);
+      if (mb > maxMargin) maxMargin = mb;
+      if (mt > maxMargin) maxMargin = mt;
+    }
+    result.gap = maxMargin;
+  }
+
   if (style.backgroundColor && style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent') {
     const parsedColor = rgbaToFigmaColor(style.backgroundColor);
     if (parsedColor) {
@@ -196,9 +209,25 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
   }
 
   if (hasText) {
-    result.fontFamily = style.fontFamily;
+    // Parse font-family: get first font and map generics
+    let family = style.fontFamily.replace(/['"]/g, '').split(',')[0].trim();
+    if (family.toLowerCase() === 'sans-serif') family = 'Arial';
+    else if (family.toLowerCase() === 'serif') family = 'Times New Roman';
+    else if (family.toLowerCase() === 'monospace') family = 'Courier New';
+    result.fontFamily = family;
+
     result.fontSize = parsePx(style.fontSize);
-    result.fontWeight = style.fontWeight;
+    
+    // Map CSS font-weight to Figma font style
+    let fw = style.fontWeight;
+    if (fw === 'normal' || fw === '400') fw = 'Regular';
+    else if (fw === 'bold' || fw === '700') fw = 'Bold';
+    else if (fw === '500') fw = 'Medium';
+    else if (fw === '600') fw = 'Semi Bold';
+    else if (fw === '300') fw = 'Light';
+    else if (fw === '800') fw = 'Extra Bold';
+    else if (fw === '900') fw = 'Black';
+    result.fontWeight = fw;
     
     if (style.lineHeight && style.lineHeight !== 'normal') {
       result.lineHeight = parsePx(style.lineHeight);

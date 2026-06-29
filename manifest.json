@@ -10,7 +10,7 @@
     "figma"
   ],
   "networkAccess": {
-    "allowedDomains": [
+    "devAllowedDomains": [
       "http://localhost:8080"
     ]
   }

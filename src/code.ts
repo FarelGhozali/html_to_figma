@@ -95,6 +95,13 @@ function applyChildSizing(
   parentLayoutMode: string,
   parentAlignItems?: string,
 ) {
+  if (layout.positioning === 'ABSOLUTE') {
+    node.layoutPositioning = 'ABSOLUTE';
+    if (layout.x !== undefined) node.x = layout.x;
+    if (layout.y !== undefined) node.y = layout.y;
+    return; // Absolute items don't follow flex rules
+  }
+
   if (parentLayoutMode === 'HORIZONTAL') {
     if (layout.widthMode === 'FILL') node.layoutGrow = 1;
     if (layout.heightMode === 'FILL') node.layoutAlign = 'STRETCH';
@@ -308,6 +315,16 @@ export async function generateFigmaUI(
       textNode.resize(nodeData.layout.width, textNode.height);
     } else if (nodeData.layout.widthMode === 'HUG') {
       textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
+    }
+  } else if (nodeData.type === 'SVG') {
+    const svgNode = figma.createNodeFromSvg(nodeData.svgContent);
+    createdNode = svgNode;
+
+    if (nodeData.name) svgNode.name = nodeData.name;
+    
+    // Scale SVG node if width/height mode is FIXED and values are provided
+    if (nodeData.layout.width !== undefined && nodeData.layout.height !== undefined) {
+      svgNode.resize(nodeData.layout.width, nodeData.layout.height);
     }
   } else {
     throw new Error('Node type not supported');

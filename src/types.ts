@@ -104,7 +104,7 @@ export interface ExtractedStyles {
  * Base interface shared by every node.
  */
 export interface BaseFigmaNode {
-  type: 'FRAME' | 'TEXT';
+  type: 'FRAME' | 'TEXT' | 'SVG';
   name?: string;
   layout: FlexLayoutProps;
   backgroundColor?: RGBAColor;
@@ -148,6 +148,14 @@ export interface FigmaTextNode extends BaseFigmaNode {
 }
 
 /**
+ * Specific node for SVG.
+ */
+export interface FigmaSvgNode extends BaseFigmaNode {
+  type: 'SVG';
+  svgContent: string;
+}
+
+/**
  * FigmaNodeData is the Main Union Type representing the UI Tree structure.
  */
-export type FigmaNodeData = FigmaFrameNode | FigmaTextNode;
+export type FigmaNodeData = FigmaFrameNode | FigmaTextNode | FigmaSvgNode;

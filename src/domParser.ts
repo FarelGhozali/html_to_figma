@@ -1,4 +1,4 @@
-import { FigmaNodeData, FigmaFrameNode, FigmaTextNode } from './types';
+import { FigmaNodeData, FigmaFrameNode, FigmaTextNode, FigmaSvgNode } from './types';
 
 export interface DOMNodeHierarchy {
   element: Element | Node;
@@ -87,9 +87,7 @@ export function traverseDOM(element: Element | Node): DOMNodeHierarchy | null {
       'LINK',
       'HEAD',
       'TITLE',
-      'INPUT',
-      'SELECT',
-      'TEXTAREA',
+      'OPTION',
     ];
     if (ignoredTags.includes(tagName)) {
       return null;
@@ -347,13 +345,15 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     if (radius > 0) result.cornerRadius = radius;
   }
 
-  if (style.borderWidth && style.borderWidth !== '0px') {
-    const weight = parsePx(style.borderWidth);
+  const bw = style.borderTopWidth || style.borderWidth;
+  if (bw && bw !== '0px') {
+    const weight = parsePx(bw);
     if (weight > 0) {
       result.strokeWeight = weight;
       result.strokeAlign = 'INSIDE'; // CSS borders are always inside
-      if (style.borderColor) {
-        const parsedStroke = rgbaToFigmaColor(style.borderColor);
+      const bc = style.borderTopColor || style.borderColor;
+      if (bc) {
+        const parsedStroke = rgbaToFigmaColor(bc);
         if (parsedStroke) result.strokeColor = parsedStroke;
       }
       // Extract border-style for dashed/dotted patterns
@@ -554,9 +554,7 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         'LINK',
         'HEAD',
         'TITLE',
-        'INPUT',
-        'SELECT',
-        'TEXTAREA',
+        'OPTION',
       ];
       if (ignoredTags.includes(tagName)) return null;
 
@@ -587,9 +585,10 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
           'SUP',
           'MARK',
           'CODE',
+          'LABEL',
         ];
 
-        if (isInlineDisplay && inlineTags.includes(tagName)) {
+        if (inlineTags.includes(tagName)) {
           // Check if this element only contains text (no nested elements except BR)
           const hasOnlyTextContent = Array.from(el.childNodes).every(
             (child) =>
@@ -732,8 +731,16 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         opacity: extractedStyles.opacity,
         ...(extractedStyles.imageUrls && ({ imageUrls: extractedStyles.imageUrls } as any)),
         layout: {
-          widthMode: style.display.includes('inline') ? 'HUG' : 'FIXED',
-          heightMode: style.display.includes('inline') ? 'HUG' : 'FIXED',
+          widthMode:
+            extractedStyles.isWidthAuto &&
+            style.display.includes('inline') &&
+            !['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)
+              ? 'HUG'
+              : 'FIXED',
+          heightMode:
+            style.display.includes('inline') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)
+              ? 'HUG'
+              : 'FIXED',
           width: extractedStyles.width,
           height: extractedStyles.height,
           flexDirection: effectiveFlexDirection,
@@ -764,6 +771,108 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         const childData = await buildNodeData(childNodes[i]);
         if (childData) {
           frameNode.children!.push(childData);
+        }
+      }
+
+      // Special handling for form inputs without text node children
+      if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
+        let textValue = '';
+        let injectCheckmark = false;
+        let injectDropdownArrow = false;
+        let injectResizeHandle = false;
+
+        if (tagName === 'INPUT') {
+          const inputEl = el as HTMLInputElement;
+          if (inputEl.type === 'checkbox' || inputEl.type === 'radio') {
+            if (inputEl.checked) {
+              frameNode.backgroundColor = extractedStyles.color || { r: 0.31, g: 0.27, b: 0.89, a: 1 };
+              injectCheckmark = true;
+            }
+          } else {
+            textValue = inputEl.value || inputEl.placeholder || '';
+          }
+        } else if (tagName === 'TEXTAREA') {
+          const taEl = el as HTMLTextAreaElement;
+          textValue = taEl.value || taEl.placeholder || '';
+          
+          const taStyle = window.getComputedStyle(taEl);
+          if (taStyle.resize !== 'none') {
+            injectResizeHandle = true;
+          }
+        } else if (tagName === 'SELECT') {
+          const selEl = el as HTMLSelectElement;
+          textValue = selEl.options[selEl.selectedIndex]?.text || '';
+          injectDropdownArrow = true;
+        }
+
+        if (textValue && frameNode.children!.length === 0) {
+          const textNode: FigmaTextNode = {
+            type: 'TEXT',
+            name: 'Value',
+            characters: textValue,
+            layout: {
+              widthMode: 'FILL',
+              heightMode: 'HUG',
+            },
+            typography: {
+              fontFamily: extractedStyles.fontFamily || 'Inter',
+              fontSize: extractedStyles.fontSize || 14,
+              fontWeight: extractedStyles.fontWeight || 'Regular',
+              lineHeight: extractedStyles.lineHeight,
+              color: extractedStyles.color || { r: 0, g: 0, b: 0, a: 1 },
+              textAlignHorizontal: extractedStyles.textAlign,
+            },
+          };
+          frameNode.children!.push(textNode);
+        }
+
+        if (injectCheckmark && frameNode.children!.length === 0) {
+          const checkNode: FigmaSvgNode = {
+            type: 'SVG',
+            name: 'Checkmark',
+            svgContent: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+            layout: { widthMode: 'FIXED', heightMode: 'FIXED', width: 10, height: 10 },
+          };
+          frameNode.children!.push(checkNode);
+          frameNode.layout.alignItems = 'CENTER';
+          frameNode.layout.justifyContent = 'CENTER';
+        }
+
+        if (injectDropdownArrow && frameNode.children!.length === 1) {
+          const colorObj = extractedStyles.color || { r: 0, g: 0, b: 0, a: 1 };
+          const r = Math.round(colorObj.r * 255).toString(16).padStart(2, '0');
+          const g = Math.round(colorObj.g * 255).toString(16).padStart(2, '0');
+          const b = Math.round(colorObj.b * 255).toString(16).padStart(2, '0');
+          const hexColor = `#${r}${g}${b}`;
+
+          const arrowNode: FigmaSvgNode = {
+            type: 'SVG',
+            name: 'DropdownChevron',
+            svgContent: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${hexColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`,
+            layout: { widthMode: 'FIXED', heightMode: 'FIXED', width: 12, height: 12 },
+          };
+          frameNode.children!.push(arrowNode);
+          frameNode.layout.flexDirection = 'ROW';
+          frameNode.layout.justifyContent = 'SPACE_BETWEEN';
+          frameNode.layout.alignItems = 'CENTER';
+        }
+        
+        if (injectResizeHandle) {
+          const resizeNode: FigmaSvgNode = {
+            type: 'SVG',
+            name: 'ResizeHandle',
+            svgContent: `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#C0C0C0" stroke-width="1.5"><line x1="10" y1="2" x2="2" y2="10"></line><line x1="10" y1="6" x2="6" y2="10"></line></svg>`,
+            layout: { 
+              widthMode: 'FIXED', 
+              heightMode: 'FIXED',
+              width: 10,
+              height: 10,
+              positioning: 'ABSOLUTE',
+              x: extractedStyles.width - 12,
+              y: extractedStyles.height - 12,
+            },
+          };
+          frameNode.children!.push(resizeNode);
         }
       }
 

@@ -443,9 +443,9 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
       if (weightNum <= 300) result.fontWeight = 'Light';
       else if (weightNum === 400) result.fontWeight = 'Regular';
       else if (weightNum === 500) result.fontWeight = 'Medium';
-      else if (weightNum === 600) result.fontWeight = 'SemiBold';
+      else if (weightNum === 600) result.fontWeight = 'Semi Bold';
       else if (weightNum === 700) result.fontWeight = 'Bold';
-      else if (weightNum >= 800) result.fontWeight = 'ExtraBold';
+      else if (weightNum >= 800) result.fontWeight = 'Extra Bold';
       else result.fontWeight = 'Regular';
     } else {
       result.fontWeight = 'Regular';
@@ -599,12 +599,23 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
           );
 
           if (hasOnlyTextContent) {
-            const textContent = (el.textContent || '').trim();
-            if (!textContent) return null;
-
             const elStyles = extractFigmaStyles(el);
 
-            const textNode: FigmaTextNode = {
+            // Do NOT flatten if the element has background, padding, or borders!
+            // It needs to be a FRAME to render these visual properties.
+            const hasVisualContainerProperties =
+              elStyles.backgroundColor !== undefined ||
+              (elStyles.paddingTop !== undefined && elStyles.paddingTop > 0) ||
+              (elStyles.paddingLeft !== undefined && elStyles.paddingLeft > 0) ||
+              (elStyles.cornerRadius !== undefined && elStyles.cornerRadius > 0) ||
+              (elStyles.strokeWeight !== undefined && elStyles.strokeWeight > 0) ||
+              elStyles.boxShadow !== undefined;
+
+            if (!hasVisualContainerProperties) {
+              const textContent = (el.textContent || '').trim();
+              if (!textContent) return null;
+
+              const textNode: FigmaTextNode = {
               type: 'TEXT',
               name: 'Text',
               characters: textContent,
@@ -623,6 +634,7 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
               },
             };
             return textNode;
+            }
           }
         }
       } catch (e) {
@@ -641,16 +653,41 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
       let effectiveAlignItems = extractedStyles.alignItems;
 
       if (!extractedStyles.isFlex && !extractedStyles.isGrid) {
-        // Block elements flow vertically by default
-        effectiveFlexDirection = 'COLUMN';
-        effectiveJustifyContent = 'FLEX_START';
+        // Special handling for tables
+        if (tagName === 'TR' || style.display === 'table-row') {
+          // Table rows are horizontal
+          effectiveFlexDirection = 'ROW';
+          effectiveJustifyContent = 'FLEX_START'; // Cells have fixed widths from DOM, so pack them
+          effectiveAlignItems = 'CENTER'; // Typical table row alignment
+        } else {
+          // Block elements flow vertically by default
+          effectiveFlexDirection = 'COLUMN';
+          effectiveJustifyContent = 'FLEX_START';
+        }
+        
         // If text-align is center, set alignItems to CENTER for the cross axis
         if (extractedStyles.textAlign === 'CENTER') {
           effectiveAlignItems = 'CENTER';
         } else if (extractedStyles.textAlign === 'RIGHT') {
           effectiveAlignItems = 'FLEX_END';
         } else {
-          effectiveAlignItems = 'STRETCH';
+          // Detect horizontal centering (e.g. margin: 0 auto) by checking the first child's bounds
+          let isCentered = false;
+          if (effectiveFlexDirection === 'COLUMN' && el.children.length > 0) {
+            const parentRect = el.getBoundingClientRect();
+            const childRect = el.children[0].getBoundingClientRect();
+            
+            // Allow for parent padding when calculating margins
+            const leftMargin = childRect.left - (parentRect.left + extractedStyles.paddingLeft);
+            const rightMargin = (parentRect.right - extractedStyles.paddingRight) - childRect.right;
+            
+            // If both margins are positive and approximately equal (within 5px tolerance)
+            if (leftMargin > 0 && rightMargin > 0 && Math.abs(leftMargin - rightMargin) < 5) {
+              isCentered = true;
+            }
+          }
+          
+          effectiveAlignItems = isCentered ? 'CENTER' : 'FLEX_START';
         }
       } else if (extractedStyles.isGrid) {
         // CSS Grid: detect whether children are arranged horizontally or vertically
@@ -672,11 +709,11 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
             effectiveAlignItems = 'FLEX_START';
           } else {
             effectiveFlexDirection = 'COLUMN';
-            effectiveAlignItems = 'STRETCH';
+            effectiveAlignItems = 'FLEX_START';
           }
         } else {
           effectiveFlexDirection = 'COLUMN';
-          effectiveAlignItems = 'STRETCH';
+          effectiveAlignItems = 'FLEX_START';
         }
       }
 
@@ -695,8 +732,8 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         opacity: extractedStyles.opacity,
         ...(extractedStyles.imageUrls && ({ imageUrls: extractedStyles.imageUrls } as any)),
         layout: {
-          widthMode: 'FIXED',
-          heightMode: 'FIXED',
+          widthMode: style.display.includes('inline') ? 'HUG' : 'FIXED',
+          heightMode: style.display.includes('inline') ? 'HUG' : 'FIXED',
           width: extractedStyles.width,
           height: extractedStyles.height,
           flexDirection: effectiveFlexDirection,

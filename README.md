@@ -32,7 +32,7 @@ Tired of manually recreating web components in Figma? This plugin acts as your p
 Before you begin, ensure you have met the following requirements:
 - **Node.js** (v14.0.0 or higher)
 - **NPM** or **Yarn**
-- **Figma Desktop App** (Recommended) or Figma in the Browser
+- **Figma Desktop App**
 
 ---
 

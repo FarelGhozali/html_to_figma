@@ -2,7 +2,7 @@
   
 # HTML to Figma
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](#)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](#)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](#)
 [![Figma API](https://img.shields.io/badge/Figma%20API-Supported-ff69b4.svg)](#)
 

@@ -47,6 +47,9 @@ export interface ExtractedStyles {
   };
   backgroundBlur?: number;
   opacity?: number;
+  textAlign?: 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFIED';
+  imageUrls?: string[];
+  isGrid?: boolean;
 }
 
 /**
@@ -69,7 +72,7 @@ export function traverseDOM(element: Element | Node): DOMNodeHierarchy | null {
     const tagName = el.tagName.toUpperCase();
 
     // Ignore structural/injection tags that have no visual output
-    const ignoredTags = ['SCRIPT', 'STYLE', 'META', 'NOSCRIPT'];
+    const ignoredTags = ['SCRIPT', 'STYLE', 'META', 'NOSCRIPT', 'BR', 'HR', 'SVG', 'CANVAS', 'VIDEO', 'AUDIO', 'IFRAME', 'LINK', 'HEAD', 'TITLE', 'INPUT', 'SELECT', 'TEXTAREA'];
     if (ignoredTags.includes(tagName)) {
       return null;
     }
@@ -78,17 +81,14 @@ export function traverseDOM(element: Element | Node): DOMNodeHierarchy | null {
     // Ensure the element is actually visible on the screen
     try {
       const style = window.getComputedStyle(el);
-      if (
-        style.display === 'none' ||
-        style.visibility === 'hidden'
-      ) {
+      if (style.display === 'none' || style.visibility === 'hidden') {
         return null; // Skip this element and all its children
       }
     } catch (e) {
       // Fallback if the element is not connected to the DOM (e.g. DocumentFragment)
       console.warn('Failed to process style for element:', el);
     }
-  } 
+  }
   // 3. Quality Check for Text Nodes
   else if (element.nodeType === Node.TEXT_NODE) {
     const textContent = element.textContent || '';
@@ -105,7 +105,7 @@ export function traverseDOM(element: Element | Node): DOMNodeHierarchy | null {
   for (let i = 0; i < childNodes.length; i++) {
     const childNode = childNodes[i];
     const parsedChild = traverseDOM(childNode);
-    
+
     // If valid, insert into array
     if (parsedChild !== null) {
       validChildren.push(parsedChild);
@@ -115,7 +115,7 @@ export function traverseDOM(element: Element | Node): DOMNodeHierarchy | null {
   // 5. Return the basic object hierarchy structure
   return {
     element: element,
-    children: validChildren
+    children: validChildren,
   };
 }
 
@@ -133,7 +133,9 @@ function parsePx(value: string | null | undefined): number {
  */
 export function rgbaToFigmaColor(rgbaString: string) {
   // Matches rgb/rgba with commas (CSS3) or spaces (CSS4), e.g., rgb(255, 255, 255) or rgb(255 255 255) or rgba(255 255 255 / 0.5)
-  const match = rgbaString.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:(?:,|\/)\s*([\d.]+))?\s*\)/);
+  const match = rgbaString.match(
+    /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:(?:,|\/)\s*([\d.]+))?\s*\)/,
+  );
   if (!match) return undefined;
 
   const r = parseInt(match[1], 10) / 255;
@@ -151,19 +153,19 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
   const rect = element.getBoundingClientRect();
   const win = element.ownerDocument.defaultView || window;
   const style = win.getComputedStyle(element);
-  
+
   // Detect if width is naturally 'auto' (shrink-to-fit or stretch)
   // We do this by temporarily overriding width to auto and seeing if the computed width changes
   const originalWidth = (element as HTMLElement).style.getPropertyValue('width');
   const originalWidthPriority = (element as HTMLElement).style.getPropertyPriority('width');
-  
+
   (element as HTMLElement).style.setProperty('width', 'auto', 'important');
   const autoStyle = win.getComputedStyle(element);
   const autoWidth = autoStyle.width;
-  
+
   (element as HTMLElement).style.setProperty('width', originalWidth, originalWidthPriority);
   if (!originalWidth) (element as HTMLElement).style.removeProperty('width');
-  
+
   const isWidthAuto = Math.abs(parseFloat(style.width) - parseFloat(autoWidth)) < 1;
 
   const result: ExtractedStyles = {
@@ -178,7 +180,7 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     paddingBottom: parsePx(style.paddingBottom),
     paddingLeft: parsePx(style.paddingLeft),
     gap: parsePx(style.gap),
-    positioning: (style.position === 'absolute' || style.position === 'fixed') ? 'ABSOLUTE' : 'AUTO'
+    positioning: style.position === 'absolute' || style.position === 'fixed' ? 'ABSOLUTE' : 'AUTO',
   };
 
   // Compute actual effective gap from rendered child positions.
@@ -211,7 +213,11 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
   }
 
   // Background color (solid)
-  if (style.backgroundColor && style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent') {
+  if (
+    style.backgroundColor &&
+    style.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+    style.backgroundColor !== 'transparent'
+  ) {
     const parsedColor = rgbaToFigmaColor(style.backgroundColor);
     // Also check for CSS4 format: rgba(0 0 0 / 0) which our regex matches but results in a=0
     if (parsedColor && parsedColor.a > 0) {
@@ -230,17 +236,18 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     // Extract all color stops
     const colorStopRegex = /rgba?\([^)]+\)(?:\s+[\d.]+%)?/g;
     const colorMatches = bgImage.match(colorStopRegex);
-    
+
     if (colorMatches && colorMatches.length >= 2) {
-      const stops: { color: { r: number; g: number; b: number; a: number }; position: number }[] = [];
-      
+      const stops: { color: { r: number; g: number; b: number; a: number }; position: number }[] =
+        [];
+
       for (let i = 0; i < colorMatches.length; i++) {
         const colorStr = colorMatches[i];
         const parsedColor = rgbaToFigmaColor(colorStr);
         // Extract position percentage if present, otherwise distribute evenly
         const posMatch = colorStr.match(/([\d.]+)%/);
         const position = posMatch ? parseFloat(posMatch[1]) / 100 : i / (colorMatches.length - 1);
-        
+
         if (parsedColor) {
           stops.push({ color: parsedColor, position });
         }
@@ -283,16 +290,18 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     if (shadowColorMatch) {
       const shadowColor = rgbaToFigmaColor(shadowColorMatch[0]);
       // Extract numeric values after the color
-      const afterColor = style.boxShadow.substring(shadowColorMatch.index! + shadowColorMatch[0].length);
+      const afterColor = style.boxShadow.substring(
+        shadowColorMatch.index! + shadowColorMatch[0].length,
+      );
       const nums = afterColor.match(/-?[\d.]+px/g);
-      
+
       if (shadowColor && nums && nums.length >= 2) {
         result.boxShadow = {
           offsetX: parsePx(nums[0]),
           offsetY: parsePx(nums[1]),
           blur: nums[2] ? parsePx(nums[2]) : 0,
           spread: nums[3] ? parsePx(nums[3]) : 0,
-          color: shadowColor
+          color: shadowColor,
         };
       }
     }
@@ -341,6 +350,11 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     }
   }
 
+  // Detect CSS Grid layout (treat as vertical for Figma purposes)
+  if (style.display === 'grid' || style.display === 'inline-grid') {
+    result.isGrid = true;
+  }
+
   if (result.isFlex) {
     result.flexDirection = style.flexDirection === 'column' ? 'COLUMN' : 'ROW';
 
@@ -355,6 +369,14 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     else result.alignItems = 'STRETCH'; // CSS default align-items is 'stretch'
   }
 
+  // Extract text-align (important for centered headings, hero sections, etc.)
+  if (style.textAlign) {
+    if (style.textAlign === 'center') result.textAlign = 'CENTER';
+    else if (style.textAlign === 'right' || style.textAlign === 'end') result.textAlign = 'RIGHT';
+    else if (style.textAlign === 'justify') result.textAlign = 'JUSTIFIED';
+    else result.textAlign = 'LEFT';
+  }
+
   // Check if it has any text nodes as direct children to extract typography
   let hasText = false;
   for (let i = 0; i < element.childNodes.length; i++) {
@@ -365,7 +387,23 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     }
   }
   // 4. Extract Text Styles (Always extract for elements that typically contain text or if hasText is true)
-  const isTextElement = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'SPAN', 'A', 'STRONG', 'B', 'EM', 'I', 'BUTTON', 'LABEL'].includes(element.tagName);
+  const isTextElement = [
+    'H1',
+    'H2',
+    'H3',
+    'H4',
+    'H5',
+    'H6',
+    'P',
+    'SPAN',
+    'A',
+    'STRONG',
+    'B',
+    'EM',
+    'I',
+    'BUTTON',
+    'LABEL',
+  ].includes(element.tagName);
   if (hasText || isTextElement) {
     // Parse font-family: get first font and map generics
     let family = style.fontFamily.replace(/['"]/g, '').split(',')[0].trim();
@@ -380,7 +418,7 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     let weight = style.fontWeight;
     if (weight === 'bold') weight = '700';
     else if (weight === 'normal') weight = '400';
-    
+
     // Map numerical weights to Figma strings
     const weightNum = parseInt(weight, 10);
     if (!isNaN(weightNum)) {
@@ -406,7 +444,49 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     if (style.color) {
       const parsedColor = rgbaToFigmaColor(style.color);
       if (parsedColor) {
-        result.color = parsedColor;
+        // Handle transparent text: CSS tricks like -webkit-text-fill-color: transparent
+        // or color: transparent with -webkit-text-stroke are used for gradient text or
+        // outlined text effects. Figma doesn't support these, so we need a fallback.
+        if (parsedColor.a === 0 || (parsedColor.r === 0 && parsedColor.g === 0 && parsedColor.b === 0 && parsedColor.a === 0)) {
+          // Check for -webkit-text-fill-color: transparent (gradient clip text)
+          const textFillColor = (style as any).webkitTextFillColor;
+          if (textFillColor === 'transparent' || textFillColor === 'rgba(0, 0, 0, 0)') {
+            // This is likely gradient text (-webkit-background-clip: text)
+            // Try to extract the first color from the background gradient
+            const bgImage = style.backgroundImage;
+            if (bgImage && bgImage.includes('linear-gradient')) {
+              const gradColorMatch = bgImage.match(/rgba?\([^)]+\)/);
+              if (gradColorMatch) {
+                const gradColor = rgbaToFigmaColor(gradColorMatch[0]);
+                if (gradColor && gradColor.a > 0) {
+                  result.color = gradColor;
+                } else {
+                  result.color = { r: 1, g: 1, b: 1, a: 1 }; // white fallback
+                }
+              } else {
+                result.color = { r: 1, g: 1, b: 1, a: 1 };
+              }
+            } else {
+              // Check for -webkit-text-stroke (outlined text)
+              const textStroke = (style as any).webkitTextStrokeColor;
+              if (textStroke) {
+                const strokeColor = rgbaToFigmaColor(textStroke);
+                if (strokeColor && strokeColor.a > 0) {
+                  result.color = strokeColor;
+                } else {
+                  result.color = { r: 1, g: 1, b: 1, a: 1 };
+                }
+              } else {
+                result.color = { r: 1, g: 1, b: 1, a: 1 };
+              }
+            }
+          } else {
+            // Regular transparent color, just use white as fallback
+            result.color = { r: 1, g: 1, b: 1, a: 1 };
+          }
+        } else {
+          result.color = parsedColor;
+        }
       }
     }
   }
@@ -417,12 +497,12 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
 /**
  * Yields execution to the main thread to prevent UI blocking.
  */
-const yieldToMain = () => new Promise(resolve => requestAnimationFrame(resolve));
+const yieldToMain = () => new Promise((resolve) => requestAnimationFrame(resolve));
 
 /**
  * Main function to traverse the DOM, extract styles, and generate Figma JSON.
  * Executes asynchronously using requestAnimationFrame to avoid UI blocking.
- * 
+ *
  * @param rootElementId The ID of the root element to start traversal from.
  */
 export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNodeData | null> {
@@ -438,17 +518,58 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
       const el = element as Element;
       const tagName = el.tagName.toUpperCase();
 
-      const ignoredTags = ['SCRIPT', 'STYLE', 'META', 'NOSCRIPT'];
+      const ignoredTags = ['SCRIPT', 'STYLE', 'META', 'NOSCRIPT', 'BR', 'HR', 'SVG', 'CANVAS', 'VIDEO', 'AUDIO', 'IFRAME', 'LINK', 'HEAD', 'TITLE', 'INPUT', 'SELECT', 'TEXTAREA'];
       if (ignoredTags.includes(tagName)) return null;
 
       try {
         const win = el.ownerDocument.defaultView || window;
         const style = win.getComputedStyle(el);
-        if (
-          style.display === 'none' ||
-          style.visibility === 'hidden'
-        ) {
+        if (style.display === 'none' || style.visibility === 'hidden') {
           return null;
+        }
+        
+        // Inline element optimization: elements like <span>, <strong>, <em>, <b>, <i>, <a>
+        // that are displayed inline and contain only text should become TEXT nodes directly,
+        // not FRAME wrappers. This is critical for headings like:
+        //   <h1>Discover the <span>Art of</span> <span>Modern Luxury</span></h1>
+        // Without this, each <span> becomes a FRAME containing a TEXT, which breaks inline flow.
+        const display = style.display;
+        const isInlineDisplay = display === 'inline' || display === 'inline-block';
+        const inlineTags = ['SPAN', 'STRONG', 'B', 'EM', 'I', 'U', 'S', 'SMALL', 'SUB', 'SUP', 'MARK', 'CODE'];
+        
+        if (isInlineDisplay && inlineTags.includes(tagName)) {
+          // Check if this element only contains text (no nested elements except BR)
+          const hasOnlyTextContent = Array.from(el.childNodes).every(
+            child => child.nodeType === Node.TEXT_NODE || 
+            (child.nodeType === Node.ELEMENT_NODE && (child as Element).tagName.toUpperCase() === 'BR')
+          );
+          
+          if (hasOnlyTextContent) {
+            const textContent = (el.textContent || '').trim();
+            if (!textContent) return null;
+            
+            const elStyles = extractFigmaStyles(el);
+            
+            const textNode: FigmaTextNode = {
+              type: 'TEXT',
+              name: 'Text',
+              characters: textContent,
+              layout: {
+                widthMode: 'HUG',
+                heightMode: 'HUG'
+              },
+              typography: {
+                fontFamily: elStyles.fontFamily || 'Inter',
+                fontSize: elStyles.fontSize || 16,
+                fontWeight: elStyles.fontWeight || 'Regular',
+                lineHeight: elStyles.lineHeight,
+                letterSpacing: elStyles.letterSpacing,
+                color: elStyles.color || { r: 1, g: 1, b: 1, a: 1 },
+                textAlignHorizontal: elStyles.textAlign
+              }
+            };
+            return textNode;
+          }
         }
       } catch (e) {
         return null;
@@ -458,6 +579,49 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
       const extractedStyles = extractFigmaStyles(el);
       const win = el.ownerDocument.defaultView || window;
       const style = win.getComputedStyle(el);
+
+      // For non-flex block elements, treat as vertical auto layout (COLUMN)
+      // This ensures children stack vertically like normal CSS block flow
+      let effectiveFlexDirection = extractedStyles.flexDirection;
+      let effectiveJustifyContent = extractedStyles.justifyContent;
+      let effectiveAlignItems = extractedStyles.alignItems;
+
+      if (!extractedStyles.isFlex && !extractedStyles.isGrid) {
+        // Block elements flow vertically by default
+        effectiveFlexDirection = 'COLUMN';
+        effectiveJustifyContent = 'FLEX_START';
+        // If text-align is center, set alignItems to CENTER for the cross axis
+        if (extractedStyles.textAlign === 'CENTER') {
+          effectiveAlignItems = 'CENTER';
+        } else if (extractedStyles.textAlign === 'RIGHT') {
+          effectiveAlignItems = 'FLEX_END';
+        } else {
+          effectiveAlignItems = 'STRETCH';
+        }
+      } else if (extractedStyles.isGrid) {
+        // CSS Grid: detect whether children are arranged horizontally or vertically
+        // by comparing the bounding rects of the first two visible children
+        const visibleChildren = Array.from(el.children).filter(child => {
+          const cs = win.getComputedStyle(child);
+          return cs.display !== 'none' && cs.visibility !== 'hidden';
+        });
+        
+        if (visibleChildren.length >= 2) {
+          const firstRect = visibleChildren[0].getBoundingClientRect();
+          const secondRect = visibleChildren[1].getBoundingClientRect();
+          // If second child is to the right (same vertical position), it's a row layout
+          if (Math.abs(firstRect.top - secondRect.top) < 10 && secondRect.left > firstRect.right - 5) {
+            effectiveFlexDirection = 'ROW';
+            effectiveAlignItems = 'FLEX_START';
+          } else {
+            effectiveFlexDirection = 'COLUMN';
+            effectiveAlignItems = 'STRETCH';
+          }
+        } else {
+          effectiveFlexDirection = 'COLUMN';
+          effectiveAlignItems = 'STRETCH';
+        }
+      }
 
       const frameNode: FigmaFrameNode = {
         type: 'FRAME',
@@ -472,31 +636,33 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         boxShadow: extractedStyles.boxShadow,
         backgroundBlur: extractedStyles.backgroundBlur,
         opacity: extractedStyles.opacity,
-        // Hack: temporarily pass imageUrls via a custom property to be intercepted by ui.ts
-        // Since FigmaFrameNode interface requires exact types, we will just pass it, but to satisfy TS
-        // we added it to BaseFigmaNode in a previous step? Wait, no, we only added imageFills to BaseFigmaNode.
-        // Let's check: types.ts currently doesn't have imageUrls in BaseFigmaNode, only in ExtractedStyles.
-        // We should just cast it to any or add it to BaseFigmaNode.
-        ...(extractedStyles.imageUrls && { imageUrls: extractedStyles.imageUrls } as any),
+        ...(extractedStyles.imageUrls && ({ imageUrls: extractedStyles.imageUrls } as any)),
         layout: {
-          widthMode: 'FIXED', 
+          widthMode: 'FIXED',
           heightMode: 'FIXED',
           width: extractedStyles.width,
           height: extractedStyles.height,
-          flexDirection: extractedStyles.flexDirection,
+          flexDirection: effectiveFlexDirection,
           gap: extractedStyles.gap,
           paddingTop: extractedStyles.paddingTop,
           paddingRight: extractedStyles.paddingRight,
           paddingBottom: extractedStyles.paddingBottom,
           paddingLeft: extractedStyles.paddingLeft,
-          clipsContent: style.overflow.includes('hidden') || style.overflow.includes('scroll') || style.overflow.includes('auto'),
-          justifyContent: extractedStyles.justifyContent,
-          alignItems: extractedStyles.alignItems,
+          clipsContent:
+            style.overflow.includes('hidden') ||
+            style.overflow.includes('scroll') ||
+            style.overflow.includes('auto'),
+          justifyContent: effectiveJustifyContent,
+          alignItems: effectiveAlignItems,
           positioning: extractedStyles.positioning,
-          x: el.parentElement ? extractedStyles.viewportX - el.parentElement.getBoundingClientRect().left : 0,
-          y: el.parentElement ? extractedStyles.viewportY - el.parentElement.getBoundingClientRect().top : 0,
+          x: el.parentElement
+            ? extractedStyles.viewportX - el.parentElement.getBoundingClientRect().left
+            : 0,
+          y: el.parentElement
+            ? extractedStyles.viewportY - el.parentElement.getBoundingClientRect().top
+            : 0,
         },
-        children: []
+        children: [],
       };
 
       const childNodes = element.childNodes;
@@ -508,7 +674,6 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
       }
 
       return frameNode;
-
     } else if (element.nodeType === Node.TEXT_NODE) {
       const textContent = element.textContent || '';
       if (textContent.trim() === '') return null;
@@ -525,8 +690,9 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
       const win = parentEl.ownerDocument.defaultView || window;
       const pDisplay = win.getComputedStyle(parentEl).display;
       const pPosition = win.getComputedStyle(parentEl).position;
-      
-      const isShrinkToFit = parentStyles.isWidthAuto && 
+
+      const isShrinkToFit =
+        parentStyles.isWidthAuto &&
         (pDisplay.includes('inline') || pPosition === 'absolute' || pPosition === 'fixed');
 
       // Flex items shrink to fit their content by default, so text in flex should HUG.
@@ -542,15 +708,16 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         characters: textContent.trim(),
         layout: {
           widthMode: textWidthMode,
-          heightMode: 'HUG'
+          heightMode: 'HUG',
         },
         typography: {
           fontFamily: parentStyles.fontFamily || 'Inter',
           fontSize: parentStyles.fontSize || 16,
           fontWeight: parentStyles.fontWeight || 'Regular',
           lineHeight: parentStyles.lineHeight,
-          color: parentStyles.color || { r: 0, g: 0, b: 0, a: 1 }
-        }
+          color: parentStyles.color || { r: 0, g: 0, b: 0, a: 1 },
+          textAlignHorizontal: parentStyles.textAlign,
+        },
       };
 
       return textNode;

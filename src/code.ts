@@ -30,20 +30,36 @@ function applyLayout(node: FrameNode, layout: FlexLayoutProps) {
   // Justify Content (Main Axis Alignment)
   if (layout.justifyContent) {
     switch (layout.justifyContent) {
-      case 'FLEX_START': node.primaryAxisAlignItems = 'MIN'; break;
-      case 'FLEX_END': node.primaryAxisAlignItems = 'MAX'; break;
-      case 'CENTER': node.primaryAxisAlignItems = 'CENTER'; break;
-      case 'SPACE_BETWEEN': node.primaryAxisAlignItems = 'SPACE_BETWEEN'; break;
+      case 'FLEX_START':
+        node.primaryAxisAlignItems = 'MIN';
+        break;
+      case 'FLEX_END':
+        node.primaryAxisAlignItems = 'MAX';
+        break;
+      case 'CENTER':
+        node.primaryAxisAlignItems = 'CENTER';
+        break;
+      case 'SPACE_BETWEEN':
+        node.primaryAxisAlignItems = 'SPACE_BETWEEN';
+        break;
     }
   }
 
   // Align Items (Cross Axis Alignment)
   if (layout.alignItems) {
     switch (layout.alignItems) {
-      case 'FLEX_START': node.counterAxisAlignItems = 'MIN'; break;
-      case 'FLEX_END': node.counterAxisAlignItems = 'MAX'; break;
-      case 'CENTER': node.counterAxisAlignItems = 'CENTER'; break;
-      case 'STRETCH': node.counterAxisAlignItems = 'MIN'; break; // Stretch is handled at child level
+      case 'FLEX_START':
+        node.counterAxisAlignItems = 'MIN';
+        break;
+      case 'FLEX_END':
+        node.counterAxisAlignItems = 'MAX';
+        break;
+      case 'CENTER':
+        node.counterAxisAlignItems = 'CENTER';
+        break;
+      case 'STRETCH':
+        node.counterAxisAlignItems = 'MIN';
+        break; // Stretch is handled at child level
     }
   }
 
@@ -58,8 +74,9 @@ function applyLayout(node: FrameNode, layout: FlexLayoutProps) {
 
   // Set absolute dimensions if mode is FIXED
   const w = layout.widthMode === 'FIXED' && layout.width !== undefined ? layout.width : node.width;
-  const h = layout.heightMode === 'FIXED' && layout.height !== undefined ? layout.height : node.height;
-  
+  const h =
+    layout.heightMode === 'FIXED' && layout.height !== undefined ? layout.height : node.height;
+
   if (layout.widthMode === 'FIXED' || layout.heightMode === 'FIXED') {
     try {
       node.resize(w, h);
@@ -72,7 +89,12 @@ function applyLayout(node: FrameNode, layout: FlexLayoutProps) {
 /**
  * Apply child behavior inside Auto Layout (e.g. FILL CONTAINER).
  */
-function applyChildSizing(node: SceneNode, layout: FlexLayoutProps, parentLayoutMode: 'HORIZONTAL' | 'VERTICAL' | 'NONE', parentAlignItems?: string) {
+function applyChildSizing(
+  node: SceneNode,
+  layout: FlexLayoutProps,
+  parentLayoutMode: 'HORIZONTAL' | 'VERTICAL' | 'NONE',
+  parentAlignItems?: string,
+) {
   if (parentLayoutMode === 'HORIZONTAL') {
     if (layout.widthMode === 'FILL') node.layoutGrow = 1;
     if (layout.heightMode === 'FILL') node.layoutAlign = 'STRETCH';
@@ -93,42 +115,53 @@ function applyChildSizing(node: SceneNode, layout: FlexLayoutProps, parentLayout
 /**
  * Main recursive function to generate Figma UI from FigmaNodeData structure.
  */
-export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode | PageNode): Promise<SceneNode> {
+export async function generateFigmaUI(
+  nodeData: FigmaNodeData,
+  parent: FrameNode | PageNode,
+): Promise<SceneNode> {
   let createdNode: SceneNode;
 
   if (nodeData.type === 'FRAME') {
     const frame = figma.createFrame();
     createdNode = frame;
-    
+
     if (nodeData.name) frame.name = nodeData.name;
-    
+
     // Apply fills (solid color or gradient)
     if (nodeData.gradientFill && nodeData.gradientFill.stops.length >= 2) {
       // Convert CSS angle to Figma gradient transform
       // CSS: 0deg = bottom-to-top, 90deg = left-to-right, 135deg = top-left to bottom-right
       const angleDeg = nodeData.gradientFill.angle;
       const angleRad = (angleDeg - 90) * (Math.PI / 180); // CSS to standard math angle
-      
+
       const cos = Math.cos(angleRad);
       const sin = Math.sin(angleRad);
-      
+
       // Figma gradient transform is a 2x3 matrix mapping from gradient space to object space
       // For a linear gradient, we need to define start and end points
-      const cx = 0.5, cy = 0.5; // Center of the gradient
+      const cx = 0.5,
+        cy = 0.5; // Center of the gradient
       const startX = cx - cos * 0.5;
       const startY = cy - sin * 0.5;
-      
-      frame.fills = [{
-        type: 'GRADIENT_LINEAR',
-        gradientTransform: [
-          [cos, sin, startX],
-          [-sin, cos, startY]
-        ],
-        gradientStops: nodeData.gradientFill.stops.map(stop => ({
-          color: { r: stop.color.r, g: stop.color.g, b: stop.color.b, a: stop.color.a !== undefined ? stop.color.a : 1 },
-          position: stop.position
-        }))
-      }];
+
+      frame.fills = [
+        {
+          type: 'GRADIENT_LINEAR',
+          gradientTransform: [
+            [cos, sin, startX],
+            [-sin, cos, startY],
+          ],
+          gradientStops: nodeData.gradientFill.stops.map((stop) => ({
+            color: {
+              r: stop.color.r,
+              g: stop.color.g,
+              b: stop.color.b,
+              a: stop.color.a !== undefined ? stop.color.a : 1,
+            },
+            position: stop.position,
+          })),
+        },
+      ];
     } else if (nodeData.backgroundColor) {
       frame.fills = [createSolidPaint(nodeData.backgroundColor)];
     } else {
@@ -144,10 +177,10 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
           currentFills.push({
             type: 'IMAGE',
             scaleMode: 'FILL', // Use FILL so it covers the bounds, similar to object-fit: cover or background-size: cover
-            imageHash: image.hash
+            imageHash: image.hash,
           });
         } catch (e) {
-          console.warn("Failed to create Figma image from buffer", e);
+          console.warn('Failed to create Figma image from buffer', e);
         }
       }
       frame.fills = currentFills;
@@ -160,7 +193,7 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
 
     // Apply effects (shadows and blur)
     const effects: Effect[] = [];
-    
+
     if (nodeData.boxShadow) {
       effects.push({
         type: 'DROP_SHADOW',
@@ -168,13 +201,13 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
           r: nodeData.boxShadow.color.r,
           g: nodeData.boxShadow.color.g,
           b: nodeData.boxShadow.color.b,
-          a: nodeData.boxShadow.color.a !== undefined ? nodeData.boxShadow.color.a : 1
+          a: nodeData.boxShadow.color.a !== undefined ? nodeData.boxShadow.color.a : 1,
         },
         offset: { x: nodeData.boxShadow.offsetX, y: nodeData.boxShadow.offsetY },
         radius: nodeData.boxShadow.blur,
         spread: nodeData.boxShadow.spread,
         visible: true,
-        blendMode: 'NORMAL'
+        blendMode: 'NORMAL',
       });
     }
 
@@ -182,7 +215,7 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
       effects.push({
         type: 'BACKGROUND_BLUR',
         radius: nodeData.backgroundBlur,
-        visible: true
+        visible: true,
       });
     }
 
@@ -197,12 +230,12 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
     if (nodeData.strokeColor && nodeData.strokeWeight !== undefined) {
       frame.strokes = [createSolidPaint(nodeData.strokeColor)];
       frame.strokeWeight = nodeData.strokeWeight;
-      
+
       // Apply dashed/dotted stroke pattern
       if (nodeData.strokeDashPattern && nodeData.strokeDashPattern.length > 0) {
         frame.dashPattern = nodeData.strokeDashPattern;
       }
-      
+
       // Apply stroke alignment (INSIDE, OUTSIDE, CENTER)
       if (nodeData.strokeAlign) {
         frame.strokeAlign = nodeData.strokeAlign;
@@ -223,17 +256,16 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
         applyChildSizing(childNode, childData.layout, frame.layoutMode, nodeData.layout.alignItems);
       }
     }
-
   } else if (nodeData.type === 'TEXT') {
     const textNode = figma.createText();
     createdNode = textNode;
-    
+
     if (nodeData.name) textNode.name = nodeData.name;
 
     // Asynchronous font loading
     const fontName: FontName = {
       family: nodeData.typography.fontFamily || 'Inter',
-      style: nodeData.typography.fontWeight || 'Regular'
+      style: nodeData.typography.fontWeight || 'Regular',
     };
 
     try {
@@ -277,7 +309,6 @@ export async function generateFigmaUI(nodeData: FigmaNodeData, parent: FrameNode
     } else if (nodeData.layout.widthMode === 'HUG') {
       textNode.textAutoResize = 'WIDTH_AND_HEIGHT';
     }
-
   } else {
     throw new Error('Node type not supported');
   }
@@ -308,16 +339,22 @@ figma.ui.onmessage = async (msg) => {
       // The incoming msg.data is already an object (passed natively via Structured Clone algorithm)
       // This preserves our Uint8Array objects perfectly!
       const nodeData = msg.data;
-      
+
       // Generate UI asynchronously
       const newNode = await generateFigmaUI(nodeData, figma.currentPage);
-      
+
       // Zoom to the newly created node
       figma.currentPage.selection = [newNode];
       figma.viewport.scrollAndZoomIntoView([newNode]);
+
+      // Notify UI that the rendering process is completely finished
+      figma.ui.postMessage({ type: 'import-done' });
     } catch (e: any) {
-      console.error("Failed to parse or generate UI:", e);
+      console.error('Failed to parse or generate UI:', e);
       figma.notify(`Error: ${e.message || e}`, { error: true });
+
+      // Notify UI to stop loading animation
+      figma.ui.postMessage({ type: 'import-error' });
     }
   }
 

@@ -34,30 +34,30 @@ export interface TypographyProps {
 export interface FlexLayoutProps {
   widthMode: SizeMode;
   heightMode: SizeMode;
-  width?: number;   // Required if widthMode === 'FIXED'
-  height?: number;  // Required if heightMode === 'FIXED'
-  
+  width?: number; // Required if widthMode === 'FIXED'
+  height?: number; // Required if heightMode === 'FIXED'
+
   flexDirection?: 'ROW' | 'COLUMN'; // Equivalent to layoutMode 'HORIZONTAL' | 'VERTICAL'
   gap?: number; // Distance between child elements (itemSpacing)
-  
+
   paddingTop?: number;
   paddingRight?: number;
   paddingBottom?: number;
   paddingLeft?: number;
-  
+
   // Equivalent to justify-content
   justifyContent?: 'FLEX_START' | 'FLEX_END' | 'CENTER' | 'SPACE_BETWEEN';
-  
+
   // Equivalent to align-items
   alignItems?: 'FLEX_START' | 'FLEX_END' | 'CENTER' | 'STRETCH';
-  
+
   // Equivalent to position: absolute or fixed
   positioning?: 'AUTO' | 'ABSOLUTE';
-  
+
   // Coordinates for absolute positioning relative to parent
   x?: number;
   y?: number;
-  
+
   // Whether the frame clips its children (overflow: hidden)
   clipsContent?: boolean;
 }

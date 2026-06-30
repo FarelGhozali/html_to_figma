@@ -3,7 +3,7 @@
 # HTML to Figma
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](#)
-[![License: ISC](https://img.shields.io/badge/License-ISC-yellow.svg)](https://opensource.org/licenses/ISC)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](#)
 [![Figma API](https://img.shields.io/badge/Figma%20API-Supported-ff69b4.svg)](#)
 
 A powerful, standalone Figma Plugin that instantly converts your HTML & CSS code into native Figma node hierarchies (Auto Layout Frames and Text).
@@ -110,4 +110,4 @@ Contributions are what make the open-source community such an amazing place to l
 
 ## License
 
-Distributed under the ISC License. See `package.json` for more information.
+This project is dual-licensed under either the **MIT License** or the **Apache License 2.0**, at your option. See the `LICENSE-MIT` and `LICENSE-APACHE` files for more information.

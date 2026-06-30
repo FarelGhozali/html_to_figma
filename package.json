@@ -14,7 +14,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "(MIT OR Apache-2.0)",
   "description": "",
   "devDependencies": {
     "@figma/plugin-typings": "^1.130.0",

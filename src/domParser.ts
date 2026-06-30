@@ -1,4 +1,4 @@
-import { FigmaNodeData, FigmaFrameNode, FigmaTextNode, FigmaSvgNode } from './types';
+import { FigmaNodeData, FigmaFrameNode, FigmaTextNode, FigmaSvgNode, TextSegment } from './types';
 
 export interface DOMNodeHierarchy {
   element: Element | Node;
@@ -345,26 +345,30 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
     if (radius > 0) result.cornerRadius = radius;
   }
 
-  const bw = style.borderTopWidth || style.borderWidth;
-  if (bw && bw !== '0px') {
-    const weight = parsePx(bw);
-    if (weight > 0) {
-      result.strokeWeight = weight;
-      result.strokeAlign = 'INSIDE'; // CSS borders are always inside
-      const bc = style.borderTopColor || style.borderColor;
-      if (bc) {
-        const parsedStroke = rgbaToFigmaColor(bc);
-        if (parsedStroke) result.strokeColor = parsedStroke;
-      }
-      // Extract border-style for dashed/dotted patterns
-      const borderStyle = style.borderStyle;
-      if (borderStyle === 'dashed') {
-        // Dashed: segments roughly 3x the stroke weight, gaps 3x the stroke weight
-        result.strokeDashPattern = [weight * 3, weight * 3];
-      } else if (borderStyle === 'dotted') {
-        // Dotted: segments equal to stroke weight, gaps equal to stroke weight
-        result.strokeDashPattern = [weight, weight];
-      }
+  const btw = parsePx(style.borderTopWidth);
+  const bbw = parsePx(style.borderBottomWidth);
+  const blw = parsePx(style.borderLeftWidth);
+  const brw = parsePx(style.borderRightWidth);
+  const bw = Math.max(btw, bbw, blw, brw);
+  
+  if (bw > 0) {
+    result.strokeWeight = bw;
+    result.strokeAlign = 'INSIDE'; // CSS borders are always inside
+    
+    // Pick the color of the thickest border, or fallback
+    const bc = style.borderBottomColor || style.borderTopColor || style.borderColor;
+    if (bc) {
+      const parsedStroke = rgbaToFigmaColor(bc);
+      if (parsedStroke) result.strokeColor = parsedStroke;
+    }
+    // Extract border-style for dashed/dotted patterns
+    const borderStyle = style.borderBottomStyle || style.borderTopStyle || style.borderStyle;
+    if (borderStyle === 'dashed') {
+      // Dashed: segments roughly 3x the stroke weight, gaps 3x the stroke weight
+      result.strokeDashPattern = [bw * 3, bw * 3];
+    } else if (borderStyle === 'dotted') {
+      // Dotted: segments equal to stroke weight, gaps equal to stroke weight
+      result.strokeDashPattern = [bw, bw];
     }
   }
 
@@ -515,6 +519,99 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
   return result;
 }
 
+const INLINE_TAGS = [
+  'SPAN', 'STRONG', 'B', 'EM', 'I', 'U', 'S', 'SMALL', 'SUB', 'SUP', 'MARK', 'CODE', 'LABEL', 'A'
+];
+
+/**
+ * Determines if an element contains ONLY text nodes and inline tags.
+ */
+function isTextContainer(element: Element): boolean {
+  if (element.childNodes.length === 0) return false;
+  
+  for (let i = 0; i < element.childNodes.length; i++) {
+    const child = element.childNodes[i];
+    if (child.nodeType === Node.TEXT_NODE) {
+      continue;
+    } else if (child.nodeType === Node.ELEMENT_NODE) {
+      const tagName = (child as Element).tagName.toUpperCase();
+      if (tagName === 'BR') continue;
+      if (INLINE_TAGS.includes(tagName)) {
+        if (!isTextContainer(child as Element)) {
+          return false;
+        }
+      } else {
+        return false; // Found a block-level element
+      }
+    } else {
+      return false; // Comments, etc.
+    }
+  }
+  return true;
+}
+
+/**
+ * Recursively extracts text segments from a node.
+ */
+function extractTextSegments(node: Node): TextSegment[] {
+  let segments: TextSegment[] = [];
+
+  if (node.nodeType === Node.TEXT_NODE) {
+    const textContent = node.textContent;
+    if (!textContent) return [];
+    
+    // Replace newlines/tabs with spaces, but don't fully trim as spaces between tags matter
+    const collapsedWhitespace = textContent.replace(/[\n\t\r]+/g, ' ');
+    if (collapsedWhitespace === '') return []; // Only whitespace that collapsed to empty? Actually replace gives ' ' if it was just whitespace.
+    // Wait, let's keep all spaces. If it's pure whitespace and next to block boundary, HTML collapses it, but for inline it keeps at least one space.
+
+    const parentEl = node.parentElement;
+    if (parentEl) {
+      const extracted = extractFigmaStyles(parentEl);
+      segments.push({
+        characters: collapsedWhitespace,
+        typography: {
+          fontFamily: extracted.fontFamily || 'Inter',
+          fontSize: extracted.fontSize || 16,
+          fontWeight: extracted.fontWeight || 'Regular',
+          lineHeight: extracted.lineHeight,
+          letterSpacing: extracted.letterSpacing,
+          color: extracted.color || { r: 0, g: 0, b: 0, a: 1 },
+          textAlignHorizontal: extracted.textAlign,
+        }
+      });
+    }
+  } else if (node.nodeType === Node.ELEMENT_NODE) {
+    const el = node as Element;
+    const tagName = el.tagName.toUpperCase();
+    
+    if (tagName === 'BR') {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const extracted = extractFigmaStyles(parentEl);
+        segments.push({
+          characters: '\n',
+          typography: {
+            fontFamily: extracted.fontFamily || 'Inter',
+            fontSize: extracted.fontSize || 16,
+            fontWeight: extracted.fontWeight || 'Regular',
+            lineHeight: extracted.lineHeight,
+            letterSpacing: extracted.letterSpacing,
+            color: extracted.color || { r: 0, g: 0, b: 0, a: 1 },
+            textAlignHorizontal: extracted.textAlign,
+          }
+        });
+      }
+    } else {
+      for (let i = 0; i < el.childNodes.length; i++) {
+        segments = segments.concat(extractTextSegments(el.childNodes[i]));
+      }
+    }
+  }
+
+  return segments;
+}
+
 /**
  * Yields execution to the main thread to prevent UI blocking.
  */
@@ -565,74 +662,59 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
           return null;
         }
 
-        // Inline element optimization: elements like <span>, <strong>, <em>, <b>, <i>, <a>
-        // that are displayed inline and contain only text should become TEXT nodes directly,
-        // not FRAME wrappers. This is critical for headings like:
-        //   <h1>Discover the <span>Art of</span> <span>Modern Luxury</span></h1>
-        // Without this, each <span> becomes a FRAME containing a TEXT, which breaks inline flow.
-        const display = style.display;
-        const isInlineDisplay = display === 'inline' || display === 'inline-block';
-        const inlineTags = [
-          'SPAN',
-          'STRONG',
-          'B',
-          'EM',
-          'I',
-          'U',
-          'S',
-          'SMALL',
-          'SUB',
-          'SUP',
-          'MARK',
-          'CODE',
-          'LABEL',
-        ];
+        const elStyles = extractFigmaStyles(el);
+        
+        // If an element contains only text nodes and inline elements (like paragraphs, headings),
+        // we can flatten it into a single FigmaTextNode with segments for rich text formatting.
+        // This ensures the text wraps naturally instead of stacking as vertical blocks.
+        if (isTextContainer(el)) {
+          // Do NOT flatten if the element has background, padding, or borders!
+          // It needs to be a FRAME to render these visual properties.
+          const hasVisualContainerProperties =
+            elStyles.backgroundColor !== undefined ||
+            (elStyles.paddingTop !== undefined && elStyles.paddingTop > 0) ||
+            (elStyles.paddingLeft !== undefined && elStyles.paddingLeft > 0) ||
+            (elStyles.cornerRadius !== undefined && elStyles.cornerRadius > 0) ||
+            (elStyles.strokeWeight !== undefined && elStyles.strokeWeight > 0) ||
+            elStyles.boxShadow !== undefined;
 
-        if (inlineTags.includes(tagName)) {
-          // Check if this element only contains text (no nested elements except BR)
-          const hasOnlyTextContent = Array.from(el.childNodes).every(
-            (child) =>
-              child.nodeType === Node.TEXT_NODE ||
-              (child.nodeType === Node.ELEMENT_NODE &&
-                (child as Element).tagName.toUpperCase() === 'BR'),
-          );
-
-          if (hasOnlyTextContent) {
-            const elStyles = extractFigmaStyles(el);
-
-            // Do NOT flatten if the element has background, padding, or borders!
-            // It needs to be a FRAME to render these visual properties.
-            const hasVisualContainerProperties =
-              elStyles.backgroundColor !== undefined ||
-              (elStyles.paddingTop !== undefined && elStyles.paddingTop > 0) ||
-              (elStyles.paddingLeft !== undefined && elStyles.paddingLeft > 0) ||
-              (elStyles.cornerRadius !== undefined && elStyles.cornerRadius > 0) ||
-              (elStyles.strokeWeight !== undefined && elStyles.strokeWeight > 0) ||
-              elStyles.boxShadow !== undefined;
-
-            if (!hasVisualContainerProperties) {
-              const textContent = (el.textContent || '').trim();
-              if (!textContent) return null;
-
+          if (!hasVisualContainerProperties) {
+            const segments = extractTextSegments(el);
+            
+            // Clean up leading/trailing whitespace across the segments
+            if (segments.length > 0) {
+              segments[0].characters = segments[0].characters.replace(/^\s+/, '');
+              segments[segments.length - 1].characters = segments[segments.length - 1].characters.replace(/\s+$/, '');
+            }
+            
+            // Filter out empty segments after trim
+            const validSegments = segments.filter(s => s.characters.length > 0);
+            
+            if (validSegments.length > 0) {
+              const fullText = validSegments.map(s => s.characters).join('');
+              
               const textNode: FigmaTextNode = {
-              type: 'TEXT',
-              name: 'Text',
-              characters: textContent,
-              layout: {
-                widthMode: 'HUG',
-                heightMode: 'HUG',
-              },
-              typography: {
-                fontFamily: elStyles.fontFamily || 'Inter',
-                fontSize: elStyles.fontSize || 16,
-                fontWeight: elStyles.fontWeight || 'Regular',
-                lineHeight: elStyles.lineHeight,
-                letterSpacing: elStyles.letterSpacing,
-                color: elStyles.color || { r: 1, g: 1, b: 1, a: 1 },
-                textAlignHorizontal: elStyles.textAlign,
-              },
-            };
-            return textNode;
+                type: 'TEXT',
+                name: 'TextContainer',
+                characters: fullText,
+                segments: validSegments,
+                layout: {
+                  widthMode: elStyles.isWidthAuto && !['H1','H2','H3','H4','H5','H6','P'].includes(tagName) ? 'HUG' : 'FILL',
+                  heightMode: 'HUG',
+                },
+                typography: {
+                  fontFamily: elStyles.fontFamily || 'Inter',
+                  fontSize: elStyles.fontSize || 16,
+                  fontWeight: elStyles.fontWeight || 'Regular',
+                  lineHeight: elStyles.lineHeight,
+                  letterSpacing: elStyles.letterSpacing,
+                  color: elStyles.color || { r: 0, g: 0, b: 0, a: 1 },
+                  textAlignHorizontal: elStyles.textAlign,
+                },
+              };
+              return textNode;
+            } else {
+              return null; // Empty container
             }
           }
         }

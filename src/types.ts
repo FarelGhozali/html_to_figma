@@ -139,12 +139,21 @@ export interface FigmaFrameNode extends BaseFigmaNode {
 }
 
 /**
- * Specific node for Text (does not have children, but has characters).
+ * Represents typography for a specific range of characters inside a TextNode.
+ */
+export interface TextSegment {
+  characters: string;
+  typography: TypographyProps;
+}
+
+/**
+ * Specific node for Text.
  */
 export interface FigmaTextNode extends BaseFigmaNode {
   type: 'TEXT';
   characters: string;
   typography: TypographyProps;
+  segments?: TextSegment[]; // For rich text formatting
 }
 
 /**

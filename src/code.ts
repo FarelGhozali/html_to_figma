@@ -269,44 +269,126 @@ export async function generateFigmaUI(
 
     if (nodeData.name) textNode.name = nodeData.name;
 
-    // Asynchronous font loading
-    const fontName: FontName = {
-      family: nodeData.typography.fontFamily || 'Inter',
-      style: nodeData.typography.fontWeight || 'Regular',
-    };
+    if (nodeData.segments && nodeData.segments.length > 0) {
+      // 1. Load the font for the FIRST segment, apply it to the node, THEN set characters
+      const firstFont: FontName = {
+        family: nodeData.segments[0].typography.fontFamily || 'Inter',
+        style: nodeData.segments[0].typography.fontWeight || 'Regular',
+      };
+      
+      try {
+        await figma.loadFontAsync(firstFont);
+        textNode.fontName = firstFont;
+      } catch (e) {
+        try {
+          const fallback = { family: firstFont.family, style: 'Regular' };
+          await figma.loadFontAsync(fallback);
+          textNode.fontName = fallback;
+        } catch (e2) {
+          await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
+          textNode.fontName = { family: 'Inter', style: 'Regular' };
+        }
+      }
+      
+      // Now it's safe to set characters
+      textNode.characters = nodeData.characters;
 
-    try {
-      await figma.loadFontAsync(fontName);
-      textNode.fontName = fontName;
-    } catch (e) {
-      console.warn('Font not found, using Inter Regular as fallback:', fontName);
-      await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
-      textNode.fontName = { family: 'Inter', style: 'Regular' };
-    }
+      let startIndex = 0;
+      for (const segment of nodeData.segments) {
+        const segmentLen = segment.characters.length;
+        if (segmentLen === 0) continue;
+        const endIndex = startIndex + segmentLen;
 
-    textNode.characters = nodeData.characters;
-    textNode.fontSize = nodeData.typography.fontSize;
+        // Font Fallback Logic for Segments
+        const fontName: FontName = {
+          family: segment.typography.fontFamily || 'Inter',
+          style: segment.typography.fontWeight || 'Regular',
+        };
 
-    if (nodeData.typography.lineHeight !== undefined) {
-      if (typeof nodeData.typography.lineHeight === 'number') {
+        try {
+          await figma.loadFontAsync(fontName);
+          textNode.setRangeFontName(startIndex, endIndex, fontName);
+        } catch (e) {
+          try {
+            const fallback = { family: fontName.family, style: 'Regular' };
+            await figma.loadFontAsync(fallback);
+            textNode.setRangeFontName(startIndex, endIndex, fallback);
+          } catch (e2) {
+            console.warn('Font not found, using Inter Regular as fallback:', fontName);
+            await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
+            textNode.setRangeFontName(startIndex, endIndex, { family: 'Inter', style: 'Regular' });
+          }
+        }
+
+        textNode.setRangeFontSize(startIndex, endIndex, segment.typography.fontSize || 16);
+
+        if (segment.typography.lineHeight !== undefined && typeof segment.typography.lineHeight === 'number') {
+          textNode.setRangeLineHeight(startIndex, endIndex, { value: segment.typography.lineHeight, unit: 'PIXELS' });
+        }
+
+        if (segment.typography.letterSpacing !== undefined) {
+          textNode.setRangeLetterSpacing(startIndex, endIndex, { value: segment.typography.letterSpacing, unit: 'PIXELS' });
+        }
+
+        if (segment.typography.color) {
+          textNode.setRangeFills(startIndex, endIndex, [createSolidPaint(segment.typography.color)]);
+        }
+        
+        startIndex = endIndex;
+      }
+      
+      if (nodeData.typography.textAlignHorizontal) {
+        textNode.textAlignHorizontal = nodeData.typography.textAlignHorizontal;
+      }
+      if (nodeData.typography.textAlignVertical) {
+        textNode.textAlignVertical = nodeData.typography.textAlignVertical;
+      }
+    } else {
+      // Standard single-style text node
+      // Font Fallback Logic
+      const fontName: FontName = {
+        family: nodeData.typography.fontFamily || 'Inter',
+        style: nodeData.typography.fontWeight || 'Regular',
+      };
+
+      try {
+        await figma.loadFontAsync(fontName);
+        textNode.fontName = fontName;
+      } catch (e) {
+        try {
+          const fallback = { family: fontName.family, style: 'Regular' };
+          await figma.loadFontAsync(fallback);
+          textNode.fontName = fallback;
+        } catch (e2) {
+          console.warn('Font not found, using Inter Regular as fallback:', fontName);
+          await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
+          textNode.fontName = { family: 'Inter', style: 'Regular' };
+        }
+      }
+
+      // Now safe to set characters
+      textNode.characters = nodeData.characters;
+      textNode.fontSize = nodeData.typography.fontSize;
+
+      if (nodeData.typography.lineHeight !== undefined && typeof nodeData.typography.lineHeight === 'number') {
         textNode.lineHeight = { value: nodeData.typography.lineHeight, unit: 'PIXELS' };
       }
-    }
 
-    if (nodeData.typography.letterSpacing !== undefined) {
-      textNode.letterSpacing = { value: nodeData.typography.letterSpacing, unit: 'PIXELS' };
-    }
+      if (nodeData.typography.letterSpacing !== undefined) {
+        textNode.letterSpacing = { value: nodeData.typography.letterSpacing, unit: 'PIXELS' };
+      }
 
-    if (nodeData.typography.textAlignHorizontal) {
-      textNode.textAlignHorizontal = nodeData.typography.textAlignHorizontal;
-    }
+      if (nodeData.typography.textAlignHorizontal) {
+        textNode.textAlignHorizontal = nodeData.typography.textAlignHorizontal;
+      }
 
-    if (nodeData.typography.textAlignVertical) {
-      textNode.textAlignVertical = nodeData.typography.textAlignVertical;
-    }
+      if (nodeData.typography.textAlignVertical) {
+        textNode.textAlignVertical = nodeData.typography.textAlignVertical;
+      }
 
-    if (nodeData.typography.color) {
-      textNode.fills = [createSolidPaint(nodeData.typography.color)];
+      if (nodeData.typography.color) {
+        textNode.fills = [createSolidPaint(nodeData.typography.color)];
+      }
     }
 
     // Sizing for text (especially if text content must be FIXED or FILL)

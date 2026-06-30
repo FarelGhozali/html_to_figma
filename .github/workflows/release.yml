@@ -32,7 +32,7 @@ jobs:
         zip -r html_to_figma_plugin.zip dist/ manifest.json
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v3
       with:
         files: html_to_figma_plugin.zip
         generate_release_notes: true

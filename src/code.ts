@@ -90,9 +90,9 @@ function applyLayout(node: FrameNode, layout: FlexLayoutProps) {
  * Apply child behavior inside Auto Layout (e.g. FILL CONTAINER).
  */
 function applyChildSizing(
-  node: SceneNode,
+  node: any,
   layout: FlexLayoutProps,
-  parentLayoutMode: 'HORIZONTAL' | 'VERTICAL' | 'NONE',
+  parentLayoutMode: string,
   parentAlignItems?: string,
 ) {
   if (parentLayoutMode === 'HORIZONTAL') {
@@ -216,7 +216,7 @@ export async function generateFigmaUI(
         type: 'BACKGROUND_BLUR',
         radius: nodeData.backgroundBlur,
         visible: true,
-      });
+      } as any);
     }
 
     if (effects.length > 0) {
@@ -333,7 +333,7 @@ export async function generateFigmaUI(
 }
 
 // Event listener from UI interface
-figma.ui.onmessage = async (msg) => {
+figma.ui.onmessage = async (msg: any) => {
   if (msg.type === 'import-json' && msg.data) {
     try {
       // The incoming msg.data is already an object (passed natively via Structured Clone algorithm)

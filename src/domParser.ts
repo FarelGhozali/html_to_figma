@@ -72,7 +72,25 @@ export function traverseDOM(element: Element | Node): DOMNodeHierarchy | null {
     const tagName = el.tagName.toUpperCase();
 
     // Ignore structural/injection tags that have no visual output
-    const ignoredTags = ['SCRIPT', 'STYLE', 'META', 'NOSCRIPT', 'BR', 'HR', 'SVG', 'CANVAS', 'VIDEO', 'AUDIO', 'IFRAME', 'LINK', 'HEAD', 'TITLE', 'INPUT', 'SELECT', 'TEXTAREA'];
+    const ignoredTags = [
+      'SCRIPT',
+      'STYLE',
+      'META',
+      'NOSCRIPT',
+      'BR',
+      'HR',
+      'SVG',
+      'CANVAS',
+      'VIDEO',
+      'AUDIO',
+      'IFRAME',
+      'LINK',
+      'HEAD',
+      'TITLE',
+      'INPUT',
+      'SELECT',
+      'TEXTAREA',
+    ];
     if (ignoredTags.includes(tagName)) {
       return null;
     }
@@ -447,7 +465,10 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
         // Handle transparent text: CSS tricks like -webkit-text-fill-color: transparent
         // or color: transparent with -webkit-text-stroke are used for gradient text or
         // outlined text effects. Figma doesn't support these, so we need a fallback.
-        if (parsedColor.a === 0 || (parsedColor.r === 0 && parsedColor.g === 0 && parsedColor.b === 0 && parsedColor.a === 0)) {
+        if (
+          parsedColor.a === 0 ||
+          (parsedColor.r === 0 && parsedColor.g === 0 && parsedColor.b === 0 && parsedColor.a === 0)
+        ) {
           // Check for -webkit-text-fill-color: transparent (gradient clip text)
           const textFillColor = (style as any).webkitTextFillColor;
           if (textFillColor === 'transparent' || textFillColor === 'rgba(0, 0, 0, 0)') {
@@ -518,7 +539,25 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
       const el = element as Element;
       const tagName = el.tagName.toUpperCase();
 
-      const ignoredTags = ['SCRIPT', 'STYLE', 'META', 'NOSCRIPT', 'BR', 'HR', 'SVG', 'CANVAS', 'VIDEO', 'AUDIO', 'IFRAME', 'LINK', 'HEAD', 'TITLE', 'INPUT', 'SELECT', 'TEXTAREA'];
+      const ignoredTags = [
+        'SCRIPT',
+        'STYLE',
+        'META',
+        'NOSCRIPT',
+        'BR',
+        'HR',
+        'SVG',
+        'CANVAS',
+        'VIDEO',
+        'AUDIO',
+        'IFRAME',
+        'LINK',
+        'HEAD',
+        'TITLE',
+        'INPUT',
+        'SELECT',
+        'TEXTAREA',
+      ];
       if (ignoredTags.includes(tagName)) return null;
 
       try {
@@ -527,7 +566,7 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         if (style.display === 'none' || style.visibility === 'hidden') {
           return null;
         }
-        
+
         // Inline element optimization: elements like <span>, <strong>, <em>, <b>, <i>, <a>
         // that are displayed inline and contain only text should become TEXT nodes directly,
         // not FRAME wrappers. This is critical for headings like:
@@ -535,28 +574,43 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         // Without this, each <span> becomes a FRAME containing a TEXT, which breaks inline flow.
         const display = style.display;
         const isInlineDisplay = display === 'inline' || display === 'inline-block';
-        const inlineTags = ['SPAN', 'STRONG', 'B', 'EM', 'I', 'U', 'S', 'SMALL', 'SUB', 'SUP', 'MARK', 'CODE'];
-        
+        const inlineTags = [
+          'SPAN',
+          'STRONG',
+          'B',
+          'EM',
+          'I',
+          'U',
+          'S',
+          'SMALL',
+          'SUB',
+          'SUP',
+          'MARK',
+          'CODE',
+        ];
+
         if (isInlineDisplay && inlineTags.includes(tagName)) {
           // Check if this element only contains text (no nested elements except BR)
           const hasOnlyTextContent = Array.from(el.childNodes).every(
-            child => child.nodeType === Node.TEXT_NODE || 
-            (child.nodeType === Node.ELEMENT_NODE && (child as Element).tagName.toUpperCase() === 'BR')
+            (child) =>
+              child.nodeType === Node.TEXT_NODE ||
+              (child.nodeType === Node.ELEMENT_NODE &&
+                (child as Element).tagName.toUpperCase() === 'BR'),
           );
-          
+
           if (hasOnlyTextContent) {
             const textContent = (el.textContent || '').trim();
             if (!textContent) return null;
-            
+
             const elStyles = extractFigmaStyles(el);
-            
+
             const textNode: FigmaTextNode = {
               type: 'TEXT',
               name: 'Text',
               characters: textContent,
               layout: {
                 widthMode: 'HUG',
-                heightMode: 'HUG'
+                heightMode: 'HUG',
               },
               typography: {
                 fontFamily: elStyles.fontFamily || 'Inter',
@@ -565,8 +619,8 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
                 lineHeight: elStyles.lineHeight,
                 letterSpacing: elStyles.letterSpacing,
                 color: elStyles.color || { r: 1, g: 1, b: 1, a: 1 },
-                textAlignHorizontal: elStyles.textAlign
-              }
+                textAlignHorizontal: elStyles.textAlign,
+              },
             };
             return textNode;
           }
@@ -601,16 +655,19 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
       } else if (extractedStyles.isGrid) {
         // CSS Grid: detect whether children are arranged horizontally or vertically
         // by comparing the bounding rects of the first two visible children
-        const visibleChildren = Array.from(el.children).filter(child => {
+        const visibleChildren = Array.from(el.children).filter((child) => {
           const cs = win.getComputedStyle(child);
           return cs.display !== 'none' && cs.visibility !== 'hidden';
         });
-        
+
         if (visibleChildren.length >= 2) {
           const firstRect = visibleChildren[0].getBoundingClientRect();
           const secondRect = visibleChildren[1].getBoundingClientRect();
           // If second child is to the right (same vertical position), it's a row layout
-          if (Math.abs(firstRect.top - secondRect.top) < 10 && secondRect.left > firstRect.right - 5) {
+          if (
+            Math.abs(firstRect.top - secondRect.top) < 10 &&
+            secondRect.left > firstRect.right - 5
+          ) {
             effectiveFlexDirection = 'ROW';
             effectiveAlignItems = 'FLEX_START';
           } else {

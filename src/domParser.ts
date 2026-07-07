@@ -350,11 +350,11 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
   const blw = parsePx(style.borderLeftWidth);
   const brw = parsePx(style.borderRightWidth);
   const bw = Math.max(btw, bbw, blw, brw);
-  
+
   if (bw > 0) {
     result.strokeWeight = bw;
     result.strokeAlign = 'INSIDE'; // CSS borders are always inside
-    
+
     // Pick the color of the thickest border, or fallback
     const bc = style.borderBottomColor || style.borderTopColor || style.borderColor;
     if (bc) {
@@ -520,7 +520,20 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
 }
 
 const INLINE_TAGS = [
-  'SPAN', 'STRONG', 'B', 'EM', 'I', 'U', 'S', 'SMALL', 'SUB', 'SUP', 'MARK', 'CODE', 'LABEL', 'A'
+  'SPAN',
+  'STRONG',
+  'B',
+  'EM',
+  'I',
+  'U',
+  'S',
+  'SMALL',
+  'SUB',
+  'SUP',
+  'MARK',
+  'CODE',
+  'LABEL',
+  'A',
 ];
 
 /**
@@ -528,7 +541,7 @@ const INLINE_TAGS = [
  */
 function isTextContainer(element: Element): boolean {
   if (element.childNodes.length === 0) return false;
-  
+
   for (let i = 0; i < element.childNodes.length; i++) {
     const child = element.childNodes[i];
     if (child.nodeType === Node.TEXT_NODE) {
@@ -559,7 +572,7 @@ function extractTextSegments(node: Node): TextSegment[] {
   if (node.nodeType === Node.TEXT_NODE) {
     const textContent = node.textContent;
     if (!textContent) return [];
-    
+
     // Replace newlines/tabs with spaces, but don't fully trim as spaces between tags matter
     const collapsedWhitespace = textContent.replace(/[\n\t\r]+/g, ' ');
     if (collapsedWhitespace === '') return []; // Only whitespace that collapsed to empty? Actually replace gives ' ' if it was just whitespace.
@@ -578,13 +591,13 @@ function extractTextSegments(node: Node): TextSegment[] {
           letterSpacing: extracted.letterSpacing,
           color: extracted.color || { r: 0, g: 0, b: 0, a: 1 },
           textAlignHorizontal: extracted.textAlign,
-        }
+        },
       });
     }
   } else if (node.nodeType === Node.ELEMENT_NODE) {
     const el = node as Element;
     const tagName = el.tagName.toUpperCase();
-    
+
     if (tagName === 'BR') {
       const parentEl = el.parentElement;
       if (parentEl) {
@@ -599,7 +612,7 @@ function extractTextSegments(node: Node): TextSegment[] {
             letterSpacing: extracted.letterSpacing,
             color: extracted.color || { r: 0, g: 0, b: 0, a: 1 },
             textAlignHorizontal: extracted.textAlign,
-          }
+          },
         });
       }
     } else {
@@ -663,7 +676,7 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         }
 
         const elStyles = extractFigmaStyles(el);
-        
+
         // If an element contains only text nodes and inline elements (like paragraphs, headings),
         // we can flatten it into a single FigmaTextNode with segments for rich text formatting.
         // This ensures the text wraps naturally instead of stacking as vertical blocks.
@@ -680,26 +693,32 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
 
           if (!hasVisualContainerProperties) {
             const segments = extractTextSegments(el);
-            
+
             // Clean up leading/trailing whitespace across the segments
             if (segments.length > 0) {
               segments[0].characters = segments[0].characters.replace(/^\s+/, '');
-              segments[segments.length - 1].characters = segments[segments.length - 1].characters.replace(/\s+$/, '');
+              segments[segments.length - 1].characters = segments[
+                segments.length - 1
+              ].characters.replace(/\s+$/, '');
             }
-            
+
             // Filter out empty segments after trim
-            const validSegments = segments.filter(s => s.characters.length > 0);
-            
+            const validSegments = segments.filter((s) => s.characters.length > 0);
+
             if (validSegments.length > 0) {
-              const fullText = validSegments.map(s => s.characters).join('');
-              
+              const fullText = validSegments.map((s) => s.characters).join('');
+
               const textNode: FigmaTextNode = {
                 type: 'TEXT',
                 name: 'TextContainer',
                 characters: fullText,
                 segments: validSegments,
                 layout: {
-                  widthMode: elStyles.isWidthAuto && !['H1','H2','H3','H4','H5','H6','P'].includes(tagName) ? 'HUG' : 'FILL',
+                  widthMode:
+                    elStyles.isWidthAuto &&
+                    !['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P'].includes(tagName)
+                      ? 'HUG'
+                      : 'FILL',
                   heightMode: 'HUG',
                 },
                 typography: {
@@ -745,7 +764,7 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
           effectiveFlexDirection = 'COLUMN';
           effectiveJustifyContent = 'FLEX_START';
         }
-        
+
         // If text-align is center, set alignItems to CENTER for the cross axis
         if (extractedStyles.textAlign === 'CENTER') {
           effectiveAlignItems = 'CENTER';
@@ -757,17 +776,17 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
           if (effectiveFlexDirection === 'COLUMN' && el.children.length > 0) {
             const parentRect = el.getBoundingClientRect();
             const childRect = el.children[0].getBoundingClientRect();
-            
+
             // Allow for parent padding when calculating margins
             const leftMargin = childRect.left - (parentRect.left + extractedStyles.paddingLeft);
-            const rightMargin = (parentRect.right - extractedStyles.paddingRight) - childRect.right;
-            
+            const rightMargin = parentRect.right - extractedStyles.paddingRight - childRect.right;
+
             // If both margins are positive and approximately equal (within 5px tolerance)
             if (leftMargin > 0 && rightMargin > 0 && Math.abs(leftMargin - rightMargin) < 5) {
               isCentered = true;
             }
           }
-          
+
           effectiveAlignItems = isCentered ? 'CENTER' : 'FLEX_START';
         }
       } else if (extractedStyles.isGrid) {
@@ -867,7 +886,12 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
           const inputEl = el as HTMLInputElement;
           if (inputEl.type === 'checkbox' || inputEl.type === 'radio') {
             if (inputEl.checked) {
-              frameNode.backgroundColor = extractedStyles.color || { r: 0.31, g: 0.27, b: 0.89, a: 1 };
+              frameNode.backgroundColor = extractedStyles.color || {
+                r: 0.31,
+                g: 0.27,
+                b: 0.89,
+                a: 1,
+              };
               injectCheckmark = true;
             }
           } else {
@@ -876,7 +900,7 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
         } else if (tagName === 'TEXTAREA') {
           const taEl = el as HTMLTextAreaElement;
           textValue = taEl.value || taEl.placeholder || '';
-          
+
           const taStyle = window.getComputedStyle(taEl);
           if (taStyle.resize !== 'none') {
             injectResizeHandle = true;
@@ -922,9 +946,15 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
 
         if (injectDropdownArrow && frameNode.children!.length === 1) {
           const colorObj = extractedStyles.color || { r: 0, g: 0, b: 0, a: 1 };
-          const r = Math.round(colorObj.r * 255).toString(16).padStart(2, '0');
-          const g = Math.round(colorObj.g * 255).toString(16).padStart(2, '0');
-          const b = Math.round(colorObj.b * 255).toString(16).padStart(2, '0');
+          const r = Math.round(colorObj.r * 255)
+            .toString(16)
+            .padStart(2, '0');
+          const g = Math.round(colorObj.g * 255)
+            .toString(16)
+            .padStart(2, '0');
+          const b = Math.round(colorObj.b * 255)
+            .toString(16)
+            .padStart(2, '0');
           const hexColor = `#${r}${g}${b}`;
 
           const arrowNode: FigmaSvgNode = {
@@ -938,14 +968,14 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
           frameNode.layout.justifyContent = 'SPACE_BETWEEN';
           frameNode.layout.alignItems = 'CENTER';
         }
-        
+
         if (injectResizeHandle) {
           const resizeNode: FigmaSvgNode = {
             type: 'SVG',
             name: 'ResizeHandle',
             svgContent: `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#C0C0C0" stroke-width="1.5"><line x1="10" y1="2" x2="2" y2="10"></line><line x1="10" y1="6" x2="6" y2="10"></line></svg>`,
-            layout: { 
-              widthMode: 'FIXED', 
+            layout: {
+              widthMode: 'FIXED',
               heightMode: 'FIXED',
               width: 10,
               height: 10,

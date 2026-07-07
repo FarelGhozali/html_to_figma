@@ -106,14 +106,14 @@ function applyChildSizing(
     if (layout.widthMode === 'FILL') node.layoutGrow = 1;
     if (layout.heightMode === 'FILL') node.layoutAlign = 'STRETCH';
     // If parent has align-items: stretch (default in CSS flex), stretch children on cross axis
-    if (parentAlignItems === 'STRETCH' && layout.positioning !== 'ABSOLUTE') {
+    if (parentAlignItems === 'STRETCH') {
       node.layoutAlign = 'STRETCH';
     }
   } else if (parentLayoutMode === 'VERTICAL') {
     if (layout.heightMode === 'FILL') node.layoutGrow = 1;
     if (layout.widthMode === 'FILL') node.layoutAlign = 'STRETCH';
     // If parent has align-items: stretch (default in CSS flex), stretch children on cross axis
-    if (parentAlignItems === 'STRETCH' && layout.positioning !== 'ABSOLUTE') {
+    if (parentAlignItems === 'STRETCH') {
       node.layoutAlign = 'STRETCH';
     }
   }

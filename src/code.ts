@@ -275,7 +275,7 @@ export async function generateFigmaUI(
         family: nodeData.segments[0].typography.fontFamily || 'Inter',
         style: nodeData.segments[0].typography.fontWeight || 'Regular',
       };
-      
+
       try {
         await figma.loadFontAsync(firstFont);
         textNode.fontName = firstFont;
@@ -289,7 +289,7 @@ export async function generateFigmaUI(
           textNode.fontName = { family: 'Inter', style: 'Regular' };
         }
       }
-      
+
       // Now it's safe to set characters
       textNode.characters = nodeData.characters;
 
@@ -322,21 +322,32 @@ export async function generateFigmaUI(
 
         textNode.setRangeFontSize(startIndex, endIndex, segment.typography.fontSize || 16);
 
-        if (segment.typography.lineHeight !== undefined && typeof segment.typography.lineHeight === 'number') {
-          textNode.setRangeLineHeight(startIndex, endIndex, { value: segment.typography.lineHeight, unit: 'PIXELS' });
+        if (
+          segment.typography.lineHeight !== undefined &&
+          typeof segment.typography.lineHeight === 'number'
+        ) {
+          textNode.setRangeLineHeight(startIndex, endIndex, {
+            value: segment.typography.lineHeight,
+            unit: 'PIXELS',
+          });
         }
 
         if (segment.typography.letterSpacing !== undefined) {
-          textNode.setRangeLetterSpacing(startIndex, endIndex, { value: segment.typography.letterSpacing, unit: 'PIXELS' });
+          textNode.setRangeLetterSpacing(startIndex, endIndex, {
+            value: segment.typography.letterSpacing,
+            unit: 'PIXELS',
+          });
         }
 
         if (segment.typography.color) {
-          textNode.setRangeFills(startIndex, endIndex, [createSolidPaint(segment.typography.color)]);
+          textNode.setRangeFills(startIndex, endIndex, [
+            createSolidPaint(segment.typography.color),
+          ]);
         }
-        
+
         startIndex = endIndex;
       }
-      
+
       if (nodeData.typography.textAlignHorizontal) {
         textNode.textAlignHorizontal = nodeData.typography.textAlignHorizontal;
       }
@@ -370,7 +381,10 @@ export async function generateFigmaUI(
       textNode.characters = nodeData.characters;
       textNode.fontSize = nodeData.typography.fontSize;
 
-      if (nodeData.typography.lineHeight !== undefined && typeof nodeData.typography.lineHeight === 'number') {
+      if (
+        nodeData.typography.lineHeight !== undefined &&
+        typeof nodeData.typography.lineHeight === 'number'
+      ) {
         textNode.lineHeight = { value: nodeData.typography.lineHeight, unit: 'PIXELS' };
       }
 
@@ -403,7 +417,7 @@ export async function generateFigmaUI(
     createdNode = svgNode;
 
     if (nodeData.name) svgNode.name = nodeData.name;
-    
+
     // Scale SVG node if width/height mode is FIXED and values are provided
     if (nodeData.layout.width !== undefined && nodeData.layout.height !== undefined) {
       svgNode.resize(nodeData.layout.width, nodeData.layout.height);

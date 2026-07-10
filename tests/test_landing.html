@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusAI | Modern SaaS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            /* Background Slate 900 */
+            background-color: #0F172A; 
+            color: #F8FAFC; 
+            font-family: 'Inter', sans-serif;
+            /* Kita jadikan body sebagai flex column agar Auto Layout vertikalnya rapi */
+            display: flex;
+            flex-direction: column; 
+        }
+
+        /* Navbar */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 64px;
+            background-color: #1E293B; /* Slate 800 */
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: #38BDF8; /* Light Blue 400 */
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #CBD5E1; /* Slate 300 */
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 16px;
+        }
+
+        .nav-button {
+            background-color: #38BDF8;
+            color: #0F172A;
+            padding: 12px 24px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        /* Hero Section */
+        .hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 120px 24px;
+            gap: 32px;
+            background-color: #0F172A;
+        }
+
+        .hero h1 {
+            font-size: 64px;
+            font-weight: 800;
+            text-align: center;
+            color: #FFFFFF;
+            max-width: 800px;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 20px;
+            color: #94A3B8; /* Slate 400 */
+            text-align: center;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 16px;
+        }
+
+        .btn-primary {
+            background-color: #38BDF8;
+            color: #0F172A;
+            padding: 16px 32px;
+            font-size: 18px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .btn-secondary {
+            background-color: #1E293B;
+            color: #F8FAFC;
+            padding: 16px 32px;
+            font-size: 18px;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        /* Features Section */
+        .features {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 80px 64px;
+            background-color: #1E293B;
+            gap: 48px;
+        }
+
+        .features-title {
+            font-size: 36px;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        .features-grid {
+            display: flex;
+            gap: 32px;
+            justify-content: center;
+        }
+
+        .feature-card {
+            display: flex;
+            flex-direction: column;
+            padding: 40px;
+            background-color: #0F172A;
+            gap: 16px;
+            width: 320px;
+        }
+
+        .feature-card-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #38BDF8;
+        }
+
+        .feature-card-desc {
+            font-size: 16px;
+            color: #94A3B8;
+            line-height: 1.5;
+        }
+
+        /* Footer */
+        footer {
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+            background-color: #0F172A;
+        }
+        
+        .footer-text {
+            color: #64748B;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="logo">NexusAI</div>
+        <div class="nav-links">
+            <a href="#">Products</a>
+            <a href="#">Solutions</a>
+            <a href="#">Pricing</a>
+            <a href="#" class="nav-button">Get Started</a>
+        </div>
+    </nav>
+
+    <div class="hero">
+        <h1>Build the future with intelligence</h1>
+        <p>Automate your workflow, scale your infrastructure, and bring your ideas to life faster with our next-generation AI platform.</p>
+        <div class="hero-cta">
+            <a href="#" class="btn-primary">Start Free Trial</a>
+            <a href="#" class="btn-secondary">View Documentation</a>
+        </div>
+    </div>
+
+    <div class="features">
+        <div class="features-title">Why choose NexusAI?</div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-card-title">Lightning Fast</div>
+                <div class="feature-card-desc">Our distributed edge network ensures your applications respond in milliseconds, anywhere in the world.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-title">Secure by Design</div>
+                <div class="feature-card-desc">Enterprise-grade encryption and security protocols come standard with every deployment.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-title">Infinite Scale</div>
+                <div class="feature-card-desc">Whether you have ten users or ten million, our infrastructure scales automatically to meet demand.</div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-text">&copy; 2026 NexusAI Inc. All rights reserved.</div>
+    </footer>
+</body>
+</html>

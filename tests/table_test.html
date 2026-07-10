@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complex Table Test</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+            padding: 40px;
+            color: #111827;
+        }
+        .table-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse; /* Critical for testing if borders render correctly */
+            text-align: left;
+        }
+        th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+            padding: 16px;
+            border-bottom: 2px solid #e5e7eb;
+            color: #374151;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        td {
+            padding: 16px;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: middle;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status.active {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .status.offline {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #6b7280;
+        }
+        .name {
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+        .email {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        /* Action buttons */
+        .action-link {
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .action-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <div class="user-info">
+                            <div class="avatar">JD</div>
+                            <div>
+                                <div class="name">Jane Doe</div>
+                                <div class="email">jane@example.com</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>Admin</td>
+                    <td><span class="status active">Active</span></td>
+                    <td><a href="#" class="action-link">Edit</a></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="user-info">
+                            <div class="avatar">JS</div>
+                            <div>
+                                <div class="name">John Smith</div>
+                                <div class="email">john@example.com</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>Editor</td>
+                    <td><span class="status offline">Offline</span></td>
+                    <td><a href="#" class="action-link">Edit</a></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="user-info">
+                            <div class="avatar">AW</div>
+                            <div>
+                                <div class="name">Alice Walker</div>
+                                <div class="email">alice@example.com</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>Viewer</td>
+                    <td><span class="status active">Active</span></td>
+                    <td><a href="#" class="action-link">Edit</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

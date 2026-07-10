@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overlapping Absolute Test</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f1f5f9;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+
+        .canvas {
+            width: 600px;
+            height: 400px;
+            background-color: white;
+            border-radius: 16px;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .layer-1 {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            width: 200px;
+            height: 200px;
+            background-color: #3b82f6;
+            border-radius: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .layer-2 {
+            position: absolute;
+            top: 140px;
+            left: 140px;
+            width: 200px;
+            height: 200px;
+            background-color: #f43f5e;
+            border-radius: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .layer-3 {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            width: 300px;
+            padding: 24px;
+            background-color: rgba(16, 185, 129, 0.9);
+            color: white;
+            border-radius: 12px;
+        }
+
+        .floating-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: #f59e0b;
+            color: black;
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 12px;
+            border: 2px solid white;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="canvas">
+        <div class="layer-1">Layer 1 (Bottom)</div>
+        <div class="layer-2">Layer 2 (Middle)</div>
+        <div class="layer-3">
+            Layer 3 (Top)
+            <div style="font-size: 14px; margin-top: 8px;">Tests if multiple absolute elements inside a relative parent retain their exact coordinates.</div>
+            <div class="floating-badge">New!</div>
+        </div>
+    </div>
+</body>
+</html>

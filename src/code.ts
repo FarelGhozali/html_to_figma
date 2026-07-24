@@ -491,15 +491,26 @@ figma.ui.onmessage = async (msg: any) => {
   if (msg.type === 'import-json' && msg.data) {
     try {
       // The incoming msg.data is already an object (passed natively via Structured Clone algorithm)
-      // This preserves our Uint8Array objects perfectly!
-      const nodeData = msg.data;
+      // The incoming msg.data could be a single node data object or an array of them.
+      // Generate UI asynchronously for one or multiple nodes
+      const nodeDataArray = Array.isArray(msg.data) ? msg.data : [msg.data];
+      const createdNodes: SceneNode[] = [];
+      let currentXOffset = 0;
 
-      // Generate UI asynchronously
-      const newNode = await generateFigmaUI(nodeData, figma.currentPage);
+      for (const nodeData of nodeDataArray) {
+        const newNode = await generateFigmaUI(nodeData, figma.currentPage);
+        
+        // Offset the new node so they don't stack on top of each other
+        newNode.x = figma.viewport.center.x + currentXOffset;
+        newNode.y = figma.viewport.center.y;
+        
+        currentXOffset += newNode.width + 100; // Add 100px padding
+        createdNodes.push(newNode);
+      }
 
-      // Zoom to the newly created node
-      figma.currentPage.selection = [newNode];
-      figma.viewport.scrollAndZoomIntoView([newNode]);
+      // Zoom to the newly created nodes
+      figma.currentPage.selection = createdNodes;
+      figma.viewport.scrollAndZoomIntoView(createdNodes);
 
       // Notify UI that the rendering process is completely finished
       figma.ui.postMessage({ type: 'import-done' });

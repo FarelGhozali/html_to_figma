@@ -463,50 +463,54 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
       result.letterSpacing = parsePx(style.letterSpacing);
     }
 
+    // 1. Text Stroke
+    const textStrokeColor = (style as any).webkitTextStrokeColor;
+    const textStrokeWidth = (style as any).webkitTextStrokeWidth;
+    if (textStrokeColor && textStrokeWidth && textStrokeWidth !== '0px') {
+      const strokeColor = rgbaToFigmaColor(textStrokeColor);
+      if (strokeColor && strokeColor.a > 0) {
+        result.strokeColor = strokeColor;
+        result.strokeWeight = parsePx(textStrokeWidth);
+      }
+    }
+
+    // 2. Text Fill Color
     if (style.color) {
       const parsedColor = rgbaToFigmaColor(style.color);
       if (parsedColor) {
-        // Handle transparent text: CSS tricks like -webkit-text-fill-color: transparent
-        // or color: transparent with -webkit-text-stroke are used for gradient text or
-        // outlined text effects. Figma doesn't support these, so we need a fallback.
         if (
           parsedColor.a === 0 ||
           (parsedColor.r === 0 && parsedColor.g === 0 && parsedColor.b === 0 && parsedColor.a === 0)
         ) {
-          // Check for -webkit-text-fill-color: transparent (gradient clip text)
           const textFillColor = (style as any).webkitTextFillColor;
           if (textFillColor === 'transparent' || textFillColor === 'rgba(0, 0, 0, 0)') {
-            // This is likely gradient text (-webkit-background-clip: text)
-            // Try to extract the first color from the background gradient
+            // Gradient clip text
             const bgImage = style.backgroundImage;
             if (bgImage && bgImage.includes('linear-gradient')) {
-              const gradColorMatch = bgImage.match(/rgba?\([^)]+\)/);
-              if (gradColorMatch) {
-                const gradColor = rgbaToFigmaColor(gradColorMatch[0]);
-                if (gradColor && gradColor.a > 0) {
-                  result.color = gradColor;
-                } else {
-                  result.color = { r: 1, g: 1, b: 1, a: 1 }; // white fallback
+              // Extract the linear gradient for text
+              const angleMatch = bgImage.match(/linear-gradient\(\s*(\d+)deg/);
+              const angle = angleMatch ? parseInt(angleMatch[1], 10) : 180;
+              const colorStopRegex = /rgba?\([^)]+\)(?:\s+[\d.]+%)?/g;
+              const colorMatches = bgImage.match(colorStopRegex);
+
+              if (colorMatches && colorMatches.length >= 2) {
+                const stops: { color: { r: number; g: number; b: number; a: number }; position: number }[] = [];
+                for (let i = 0; i < colorMatches.length; i++) {
+                  const colorStr = colorMatches[i];
+                  const parsedStop = rgbaToFigmaColor(colorStr);
+                  const posMatch = colorStr.match(/([\d.]+)%/);
+                  const position = posMatch ? parseFloat(posMatch[1]) / 100 : i / (colorMatches.length - 1);
+                  if (parsedStop) stops.push({ color: parsedStop, position });
                 }
-              } else {
-                result.color = { r: 1, g: 1, b: 1, a: 1 };
+                if (stops.length >= 2) {
+                  result.gradientFill = { type: 'LINEAR', angle, stops };
+                }
               }
+              if (!result.gradientFill) result.color = { r: 1, g: 1, b: 1, a: 1 };
             } else {
-              // Check for -webkit-text-stroke (outlined text)
-              const textStroke = (style as any).webkitTextStrokeColor;
-              if (textStroke) {
-                const strokeColor = rgbaToFigmaColor(textStroke);
-                if (strokeColor && strokeColor.a > 0) {
-                  result.color = strokeColor;
-                } else {
-                  result.color = { r: 1, g: 1, b: 1, a: 1 };
-                }
-              } else {
-                result.color = { r: 1, g: 1, b: 1, a: 1 };
-              }
+              result.color = { r: 1, g: 1, b: 1, a: 1 };
             }
-          } else {
-            // Regular transparent color, just use white as fallback
+          } else if (!result.strokeColor) {
             result.color = { r: 1, g: 1, b: 1, a: 1 };
           }
         } else {
@@ -591,6 +595,9 @@ function extractTextSegments(node: Node): TextSegment[] {
           letterSpacing: extracted.letterSpacing,
           color: extracted.color || { r: 0, g: 0, b: 0, a: 1 },
           textAlignHorizontal: extracted.textAlign,
+          strokeColor: extracted.strokeColor,
+          strokeWeight: extracted.strokeWeight,
+          gradientFill: extracted.gradientFill,
         },
       });
     }
@@ -612,6 +619,9 @@ function extractTextSegments(node: Node): TextSegment[] {
             letterSpacing: extracted.letterSpacing,
             color: extracted.color || { r: 0, g: 0, b: 0, a: 1 },
             textAlignHorizontal: extracted.textAlign,
+            strokeColor: extracted.strokeColor,
+            strokeWeight: extracted.strokeWeight,
+            gradientFill: extracted.gradientFill,
           },
         });
       }
@@ -623,6 +633,47 @@ function extractTextSegments(node: Node): TextSegment[] {
   }
 
   return segments;
+}
+
+/**
+ * Formats a string to be more natural (e.g. "hero-section" -> "Hero Section").
+ */
+function capitalizeAndFormat(str: string): string {
+  if (!str) return '';
+  const spaced = str.replace(/[-_]/g, ' ');
+  return spaced
+    .split(' ')
+    .filter(word => word.length > 0)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+/**
+ * Generates a natural-sounding layer name based on element attributes or text content.
+ */
+function generateLayerName(el: Element, isTextNode: boolean = false, textContent: string = ''): string {
+  if (isTextNode && textContent) {
+    const trimmed = textContent.trim();
+    if (trimmed.length > 0) {
+      return trimmed.length > 30 ? trimmed.substring(0, 30) + '...' : trimmed;
+    }
+  }
+
+  if (el.id) {
+    return capitalizeAndFormat(el.id);
+  }
+
+  if (el.classList && el.classList.length > 0) {
+    // Filter out common utility classes or take the most descriptive one
+    // For simplicity, take the first class
+    return capitalizeAndFormat(el.classList[0]);
+  }
+
+  // Fallback to tag name
+  let tagName = el.tagName ? el.tagName.toLowerCase() : 'Frame';
+  if (tagName === 'body') tagName = 'page';
+  if (tagName === 'nav') tagName = 'navbar';
+  return capitalizeAndFormat(tagName);
 }
 
 /**
@@ -710,7 +761,7 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
 
               const textNode: FigmaTextNode = {
                 type: 'TEXT',
-                name: 'TextContainer',
+                name: generateLayerName(el, true, fullText),
                 characters: fullText,
                 segments: validSegments,
                 layout: {
@@ -819,7 +870,7 @@ export async function generateFigmaJSON(rootElement: Element): Promise<FigmaNode
 
       const frameNode: FigmaFrameNode = {
         type: 'FRAME',
-        name: el.id ? `#${el.id}` : tagName,
+        name: generateLayerName(el),
         backgroundColor: extractedStyles.backgroundColor,
         gradientFill: extractedStyles.gradientFill,
         cornerRadius: extractedStyles.cornerRadius,

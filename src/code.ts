@@ -14,6 +14,35 @@ function createSolidPaint(color: RGBAColor): SolidPaint {
 }
 
 /**
+ * Convert gradientFill from JSON to Figma GradientPaint.
+ */
+function createGradientPaint(gradientFill: { type: 'LINEAR'; angle: number; stops: { color: RGBAColor; position: number }[] }): GradientPaint {
+  const angleRad = (gradientFill.angle - 90) * (Math.PI / 180);
+  const cos = Math.cos(angleRad);
+  const sin = Math.sin(angleRad);
+  const cx = 0.5, cy = 0.5;
+  const startX = cx - cos * 0.5;
+  const startY = cy - sin * 0.5;
+
+  return {
+    type: 'GRADIENT_LINEAR',
+    gradientTransform: [
+      [cos, sin, startX],
+      [-sin, cos, startY],
+    ],
+    gradientStops: gradientFill.stops.map((stop) => ({
+      color: {
+        r: stop.color.r,
+        g: stop.color.g,
+        b: stop.color.b,
+        a: stop.color.a !== undefined ? stop.color.a : 1,
+      },
+      position: stop.position,
+    })),
+  };
+}
+
+/**
  * Apply Auto Layout (Flexbox) rules to a Frame.
  */
 function applyLayout(node: FrameNode, layout: FlexLayoutProps) {
@@ -339,7 +368,11 @@ export async function generateFigmaUI(
           });
         }
 
-        if (segment.typography.color) {
+        if (segment.typography.gradientFill) {
+          textNode.setRangeFills(startIndex, endIndex, [
+            createGradientPaint(segment.typography.gradientFill),
+          ]);
+        } else if (segment.typography.color) {
           textNode.setRangeFills(startIndex, endIndex, [
             createSolidPaint(segment.typography.color),
           ]);
@@ -400,9 +433,17 @@ export async function generateFigmaUI(
         textNode.textAlignVertical = nodeData.typography.textAlignVertical;
       }
 
-      if (nodeData.typography.color) {
+      if (nodeData.typography.gradientFill) {
+        textNode.fills = [createGradientPaint(nodeData.typography.gradientFill)];
+      } else if (nodeData.typography.color) {
         textNode.fills = [createSolidPaint(nodeData.typography.color)];
       }
+    }
+
+    // Apply strokes to text node
+    if (nodeData.typography.strokeColor && nodeData.typography.strokeWeight !== undefined) {
+      textNode.strokes = [createSolidPaint(nodeData.typography.strokeColor)];
+      textNode.strokeWeight = nodeData.typography.strokeWeight;
     }
 
     // Sizing for text (especially if text content must be FIXED or FILL)

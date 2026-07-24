@@ -125,7 +125,7 @@ if (btnImport) {
       const enforceAutoLayout = useAutoLayout.checked;
 
       // Helper to process a single HTML string
-      const processHtml = async (html: string, index: number, isBatch: boolean = false) => {
+      const processHtml = async (html: string, index: number, isBatch: boolean = false, fileName?: string) => {
         btnImportText.textContent = `Rendering${isBatch ? ` (${index + 1}/${uploadedFiles.length})` : ''}...`;
 
         const frameDoc = renderFrame.contentDocument || renderFrame.contentWindow?.document;
@@ -158,6 +158,17 @@ if (btnImport) {
 
         const figmaNodeData = await generateFigmaJSON(frameDoc.body);
         if (!figmaNodeData) throw new Error('Failed to parse DOM');
+        
+        if (fileName) {
+          // Format filename (remove .html, replace dashes/underscores with spaces, capitalize)
+          const formattedName = fileName
+            .replace(/\.html?$/i, '')
+            .replace(/[-_]/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+          figmaNodeData.name = formattedName || figmaNodeData.name;
+        }
 
         btnImportText.textContent = `Processing Images${isBatch ? ` (${index + 1}/${uploadedFiles.length})` : ''}...`;
         const fetchImages = async (node: any) => {
@@ -209,7 +220,7 @@ if (btnImport) {
       } else if (currentMode === 'file') {
         if (!uploadedFiles || uploadedFiles.length === 0) throw new Error('Please upload HTML files first.');
         for (let i = 0; i < uploadedFiles.length; i++) {
-          const nodeData = await processHtml(uploadedFiles[i].html, i, true);
+          const nodeData = await processHtml(uploadedFiles[i].html, i, true, uploadedFiles[i].name);
           nodesToImport.push(nodeData);
         }
       } else {

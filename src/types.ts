@@ -26,6 +26,13 @@ export interface TypographyProps {
   textAlignHorizontal?: 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFIED';
   textAlignVertical?: 'TOP' | 'CENTER' | 'BOTTOM';
   color?: RGBAColor;
+  strokeColor?: RGBAColor;
+  strokeWeight?: number;
+  gradientFill?: {
+    type: 'LINEAR';
+    angle: number;
+    stops: { color: RGBAColor; position: number }[];
+  };
 }
 
 /**

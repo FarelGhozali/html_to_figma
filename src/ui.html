@@ -75,6 +75,12 @@
         Paste Code
       </button>
       <button
+        id="tab-file"
+        class="flex-1 py-1 text-[11px] font-medium rounded text-gray-400 hover:text-white transition-colors duration-200 focus:outline-none"
+      >
+        Upload File
+      </button>
+      <button
         id="tab-url"
         class="flex-1 py-1 text-[11px] font-medium rounded text-gray-400 hover:text-white transition-colors duration-200 focus:outline-none"
       >
@@ -93,6 +99,23 @@
         placeholder='Paste HTML & CSS code here...&#10;&#10;<div style="display: flex; gap: 10px;">&#10;  <h1>Hello Figma</h1>&#10;</div>'
         spellcheck="false"
       ></textarea>
+    </div>
+
+    <!-- File Upload Area -->
+    <div id="area-file" class="flex-grow flex flex-col mb-4 hidden">
+      <p class="text-[11px] text-gray-400 mb-2 leading-relaxed">
+        Upload a local HTML file directly.
+      </p>
+      <div
+        id="dropzone"
+        class="flex-grow rounded border-2 border-dashed border-figma-border hover:border-figma-blue bg-figma-surface flex flex-col items-center justify-center cursor-pointer transition-colors duration-200 p-4 text-center"
+      >
+        <svg class="w-8 h-8 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+        <p class="text-[12px] font-medium text-gray-300">Click to browse or</p>
+        <p class="text-[11px] text-gray-500 mt-1">Drag and drop .html file here</p>
+        <input type="file" id="file-input" accept=".html,.htm" class="hidden" />
+      </div>
+      <p id="file-status" class="text-[11px] text-figma-blue mt-2 hidden text-center font-medium"></p>
     </div>
 
     <!-- URL Input Area -->

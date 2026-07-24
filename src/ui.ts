@@ -12,32 +12,91 @@ const btnCancel = document.getElementById('btn-cancel') as HTMLButtonElement;
 const renderFrame = document.getElementById('render-frame') as HTMLIFrameElement;
 
 const tabCode = document.getElementById('tab-code') as HTMLButtonElement;
+const tabFile = document.getElementById('tab-file') as HTMLButtonElement;
 const tabUrl = document.getElementById('tab-url') as HTMLButtonElement;
 const areaCode = document.getElementById('area-code') as HTMLDivElement;
+const areaFile = document.getElementById('area-file') as HTMLDivElement;
 const areaUrl = document.getElementById('area-url') as HTMLDivElement;
 
-let currentMode: 'code' | 'url' = 'code';
+const dropzone = document.getElementById('dropzone') as HTMLDivElement;
+const fileInput = document.getElementById('file-input') as HTMLInputElement;
+const fileStatus = document.getElementById('file-status') as HTMLParagraphElement;
+
+let currentMode: 'code' | 'url' | 'file' = 'code';
+let uploadedHTML: string = '';
 
 // Setup Tabs
+function resetTabs() {
+  const activeClass = 'flex-1 py-1 text-[11px] font-medium rounded bg-figma-bg text-white shadow-sm transition-colors duration-200 focus:outline-none';
+  const inactiveClass = 'flex-1 py-1 text-[11px] font-medium rounded text-gray-400 hover:text-white transition-colors duration-200 focus:outline-none';
+  
+  tabCode.className = currentMode === 'code' ? activeClass : inactiveClass;
+  tabFile.className = currentMode === 'file' ? activeClass : inactiveClass;
+  tabUrl.className = currentMode === 'url' ? activeClass : inactiveClass;
+
+  areaCode.classList.toggle('hidden', currentMode !== 'code');
+  areaFile.classList.toggle('hidden', currentMode !== 'file');
+  areaUrl.classList.toggle('hidden', currentMode !== 'url');
+}
+
 tabCode.onclick = () => {
   currentMode = 'code';
-  tabCode.className =
-    'flex-1 py-1 text-[11px] font-medium rounded bg-figma-bg text-white shadow-sm transition-colors duration-200 focus:outline-none';
-  tabUrl.className =
-    'flex-1 py-1 text-[11px] font-medium rounded text-gray-400 hover:text-white transition-colors duration-200 focus:outline-none';
-  areaCode.classList.remove('hidden');
-  areaUrl.classList.add('hidden');
+  resetTabs();
+};
+
+tabFile.onclick = () => {
+  currentMode = 'file';
+  resetTabs();
 };
 
 tabUrl.onclick = () => {
   currentMode = 'url';
-  tabUrl.className =
-    'flex-1 py-1 text-[11px] font-medium rounded bg-figma-bg text-white shadow-sm transition-colors duration-200 focus:outline-none';
-  tabCode.className =
-    'flex-1 py-1 text-[11px] font-medium rounded text-gray-400 hover:text-white transition-colors duration-200 focus:outline-none';
-  areaUrl.classList.remove('hidden');
-  areaCode.classList.add('hidden');
+  resetTabs();
 };
+
+// Setup Drag and Drop
+dropzone.addEventListener('click', () => {
+  fileInput.click();
+});
+
+function handleFile(file: File) {
+  if (file && (file.name.endsWith('.html') || file.name.endsWith('.htm') || file.type === 'text/html')) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      uploadedHTML = e.target?.result as string;
+      fileStatus.textContent = `Loaded: ${file.name}`;
+      fileStatus.classList.remove('hidden');
+    };
+    reader.readAsText(file);
+  } else {
+    fileStatus.textContent = 'Invalid file type. Please upload a .html file.';
+    fileStatus.classList.remove('hidden');
+    uploadedHTML = '';
+  }
+}
+
+fileInput.addEventListener('change', (e) => {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (file) handleFile(file);
+});
+
+dropzone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropzone.classList.add('border-figma-blue', 'bg-figma-surface/80');
+});
+
+dropzone.addEventListener('dragleave', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('border-figma-blue', 'bg-figma-surface/80');
+});
+
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('border-figma-blue', 'bg-figma-surface/80');
+  
+  const file = e.dataTransfer?.files[0];
+  if (file) handleFile(file);
+});
 
 // 2. Setup event listener for the Import button
 if (btnImport) {
@@ -96,6 +155,11 @@ if (btnImport) {
         } else {
           htmlData = `${baseTag}${htmlData}`;
         }
+      } else if (currentMode === 'file') {
+        if (!uploadedHTML || !uploadedHTML.trim()) {
+          throw new Error('Please upload an HTML file first.');
+        }
+        htmlData = uploadedHTML;
       } else {
         // 1. Get HTML from input
         htmlData = htmlInput.value;

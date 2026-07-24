@@ -670,10 +670,48 @@ function generateLayerName(el: Element, isTextNode: boolean = false, textContent
   }
 
   // Fallback to tag name
-  let tagName = el.tagName ? el.tagName.toLowerCase() : 'Frame';
-  if (tagName === 'body') tagName = 'page';
-  if (tagName === 'nav') tagName = 'navbar';
-  return capitalizeAndFormat(tagName);
+  const tagName = el.tagName ? el.tagName.toLowerCase() : 'frame';
+  
+  const tagMap: Record<string, string> = {
+    'body': 'Page',
+    'nav': 'Navbar',
+    'div': 'Container',
+    'section': 'Section',
+    'article': 'Article',
+    'header': 'Header',
+    'footer': 'Footer',
+    'main': 'Main',
+    'aside': 'Sidebar',
+    'ul': 'List',
+    'ol': 'Ordered List',
+    'li': 'List Item',
+    'a': 'Link',
+    'p': 'Paragraph',
+    'span': 'Text Wrap',
+    'button': 'Button',
+    'img': 'Image',
+    'form': 'Form',
+    'input': 'Input Field',
+    'textarea': 'Text Area',
+    'label': 'Label',
+    'table': 'Table',
+    'thead': 'Table Head',
+    'tbody': 'Table Body',
+    'tfoot': 'Table Foot',
+    'tr': 'Table Row',
+    'th': 'Table Header',
+    'td': 'Table Cell',
+    'h1': 'Heading',
+    'h2': 'Heading',
+    'h3': 'Heading',
+    'h4': 'Heading',
+    'h5': 'Heading',
+    'h6': 'Heading',
+    'figure': 'Figure',
+    'figcaption': 'Caption'
+  };
+
+  return tagMap[tagName] || capitalizeAndFormat(tagName);
 }
 
 /**

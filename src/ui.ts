@@ -23,7 +23,7 @@ const fileInput = document.getElementById('file-input') as HTMLInputElement;
 const fileStatus = document.getElementById('file-status') as HTMLParagraphElement;
 
 let currentMode: 'code' | 'url' | 'file' = 'code';
-let uploadedHTML: string = '';
+let uploadedFiles: { name: string, html: string }[] = [];
 
 // Setup Tabs
 function resetTabs() {
@@ -59,25 +59,39 @@ dropzone.addEventListener('click', () => {
   fileInput.click();
 });
 
-function handleFile(file: File) {
-  if (file && (file.name.endsWith('.html') || file.name.endsWith('.htm') || file.type === 'text/html')) {
+function handleFiles(fileList: FileList | File[]) {
+  const files = Array.from(fileList).filter(f => f.name.endsWith('.html') || f.name.endsWith('.htm') || f.type === 'text/html');
+  
+  if (files.length === 0) {
+    fileStatus.textContent = 'Invalid file type. Please upload .html files.';
+    fileStatus.classList.remove('hidden');
+    return;
+  }
+
+  uploadedFiles = [];
+  let filesRead = 0;
+
+  files.forEach(file => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      uploadedHTML = e.target?.result as string;
-      fileStatus.textContent = `Loaded: ${file.name}`;
-      fileStatus.classList.remove('hidden');
+      uploadedFiles.push({
+        name: file.name,
+        html: e.target?.result as string
+      });
+      filesRead++;
+      
+      if (filesRead === files.length) {
+        fileStatus.textContent = `Loaded: ${files.length} file(s)`;
+        fileStatus.classList.remove('hidden');
+      }
     };
     reader.readAsText(file);
-  } else {
-    fileStatus.textContent = 'Invalid file type. Please upload a .html file.';
-    fileStatus.classList.remove('hidden');
-    uploadedHTML = '';
-  }
+  });
 }
 
 fileInput.addEventListener('change', (e) => {
-  const file = (e.target as HTMLInputElement).files?.[0];
-  if (file) handleFile(file);
+  const files = (e.target as HTMLInputElement).files;
+  if (files && files.length > 0) handleFiles(files);
 });
 
 dropzone.addEventListener('dragover', (e) => {
@@ -94,8 +108,8 @@ dropzone.addEventListener('drop', (e) => {
   e.preventDefault();
   dropzone.classList.remove('border-figma-blue', 'bg-figma-surface/80');
   
-  const file = e.dataTransfer?.files[0];
-  if (file) handleFile(file);
+  const files = e.dataTransfer?.files;
+  if (files && files.length > 0) handleFiles(files);
 });
 
 // 2. Setup event listener for the Import button
@@ -108,159 +122,114 @@ if (btnImport) {
       btnImportSpinner.classList.remove('hidden');
       btnImport.disabled = true;
 
-      if (currentMode === 'url') {
-        const url = urlInput.value.trim();
-        if (!url) {
-          throw new Error('Please enter a valid URL');
-        }
-
-        btnImportText.textContent = 'Fetching URL...';
-
-        // Use allorigins CORS proxy to fetch the HTML (using JSON endpoint to guarantee CORS bypass)
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-        let response;
-        try {
-          response = await fetch(proxyUrl);
-        } catch (e) {
-          throw new Error(
-            "Network error: The website might be actively blocking our proxy (Bot Protection). Please use the 'Paste Code' method instead for this website.",
-          );
-        }
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch URL (Status: ${response.status}). The website might be blocking proxies.`,
-          );
-        }
-
-        let jsonResponse;
-        try {
-          jsonResponse = await response.json();
-        } catch (e) {
-          throw new Error(
-            "Invalid response from proxy. The website might be blocking proxies. Please use the 'Paste Code' method.",
-          );
-        }
-
-        htmlData = jsonResponse.contents;
-
-        if (!htmlData) {
-          throw new Error('Received empty content from proxy.');
-        }
-
-        // Inject <base> tag to resolve relative paths (images, CSS) to the target URL
-        const baseTag = `<base href="${url}">`;
-        if (htmlData.includes('<head>')) {
-          htmlData = htmlData.replace('<head>', `<head>${baseTag}`);
-        } else {
-          htmlData = `${baseTag}${htmlData}`;
-        }
-      } else if (currentMode === 'file') {
-        if (!uploadedHTML || !uploadedHTML.trim()) {
-          throw new Error('Please upload an HTML file first.');
-        }
-        htmlData = uploadedHTML;
-      } else {
-        // 1. Get HTML from input
-        htmlData = htmlInput.value;
-        if (!htmlData.trim()) {
-          throw new Error('Please enter some HTML code');
-        }
-      }
-
       const enforceAutoLayout = useAutoLayout.checked;
 
-      btnImportText.textContent = 'Rendering...';
+      // Helper to process a single HTML string
+      const processHtml = async (html: string, index: number, isBatch: boolean = false) => {
+        btnImportText.textContent = `Rendering${isBatch ? ` (${index + 1}/${uploadedFiles.length})` : ''}...`;
 
-      // 2. Inject HTML into hidden iframe
-      const frameDoc = renderFrame.contentDocument || renderFrame.contentWindow?.document;
-      if (!frameDoc) throw new Error('Could not access iframe document');
+        const frameDoc = renderFrame.contentDocument || renderFrame.contentWindow?.document;
+        if (!frameDoc) throw new Error('Could not access iframe document');
 
-      frameDoc.open();
-      frameDoc.write(htmlData);
+        frameDoc.open();
+        frameDoc.write(html);
+        frameDoc.write(`
+          <style>
+            *, *::before, *::after {
+              animation: none !important;
+              animation-delay: 0s !important;
+              transition: none !important;
+              transform: none !important;
+              visibility: visible !important;
+            }
+          </style>
+        `);
+        frameDoc.close();
 
-      // Inject CSS to disable animations and force elements to their final visual state
-      // This is critical because scroll-reveal libraries and IntersectionObserver-based animations
-      // set opacity:0 and transform on elements, but never fire in a hidden iframe.
-      // NOTE: We do NOT override opacity here because that would break legitimate partial opacity
-      // (e.g. glassmorphism overlays). Instead, we fix opacity:0 elements via JavaScript below.
-      frameDoc.write(`
-        <style>
-          *, *::before, *::after {
-            animation: none !important;
-            animation-delay: 0s !important;
-            transition: none !important;
-            transform: none !important;
-            visibility: visible !important;
+        await new Promise((resolve) => setTimeout(resolve, 600));
+
+        const allElements = frameDoc.querySelectorAll('*');
+        allElements.forEach((el: Element) => {
+          const computedOpacity = parseFloat(frameDoc.defaultView!.getComputedStyle(el).opacity);
+          if (computedOpacity === 0) {
+            (el as HTMLElement).style.setProperty('opacity', '1', 'important');
           }
-        </style>
-      `);
+        });
 
-      frameDoc.close();
+        const figmaNodeData = await generateFigmaJSON(frameDoc.body);
+        if (!figmaNodeData) throw new Error('Failed to parse DOM');
 
-      // Wait for browser to load external CSS (like Google Fonts) and calculate styles
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      // Fix scroll-reveal hidden elements: find any element with opacity:0 and set it to 1.
-      // This handles IntersectionObserver-based reveal animations that never fire in a hidden iframe.
-      // We only target opacity:0 (fully hidden), preserving legitimate partial opacity values.
-      const allElements = frameDoc.querySelectorAll('*');
-      allElements.forEach((el: Element) => {
-        const computedOpacity = parseFloat(frameDoc.defaultView!.getComputedStyle(el).opacity);
-        if (computedOpacity === 0) {
-          (el as HTMLElement).style.setProperty('opacity', '1', 'important');
-        }
-      });
-
-      // 3. Extract JSON using domParser
-      const figmaNodeData = await generateFigmaJSON(frameDoc.body);
-      if (!figmaNodeData) throw new Error('Failed to parse DOM');
-
-      // 4. Fetch images and attach as Uint8Array
-      btnImportText.textContent = 'Processing Images...';
-      const fetchImages = async (node: any) => {
-        if (node.imageUrls && node.imageUrls.length > 0) {
-          node.imageFills = [];
-          for (const url of node.imageUrls) {
-            try {
-              // Note: Using corsproxy or direct fetch if same origin
-              // We'll try fetching directly first, if it fails, fallback to cors proxy
-              let res = await fetch(url).catch(() => null);
-              if (!res || !res.ok) {
-                // Try via corsproxy
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-                res = await fetch(proxyUrl).catch(() => null);
+        btnImportText.textContent = `Processing Images${isBatch ? ` (${index + 1}/${uploadedFiles.length})` : ''}...`;
+        const fetchImages = async (node: any) => {
+          if (node.imageUrls && node.imageUrls.length > 0) {
+            node.imageFills = [];
+            for (const url of node.imageUrls) {
+              try {
+                let res = await fetch(url).catch(() => null);
+                if (!res || !res.ok) {
+                  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                  res = await fetch(proxyUrl).catch(() => null);
+                }
+                if (res && res.ok) {
+                  const buffer = await res.arrayBuffer();
+                  node.imageFills.push(new Uint8Array(buffer));
+                }
+              } catch (e) {
+                console.warn('Failed to fetch image:', url, e);
               }
-              if (res && res.ok) {
-                const buffer = await res.arrayBuffer();
-                node.imageFills.push(new Uint8Array(buffer));
-              }
-            } catch (e) {
-              console.warn('Failed to fetch image:', url, e);
             }
           }
-        }
-        if (node.children) {
-          await Promise.all(node.children.map((child: any) => fetchImages(child)));
-        }
+          if (node.children) {
+            await Promise.all(node.children.map((child: any) => fetchImages(child)));
+          }
+        };
+
+        await fetchImages(figmaNodeData);
+        
+        // Return parsed data
+        return figmaNodeData;
       };
 
-      await fetchImages(figmaNodeData);
+      let nodesToImport = [];
 
-      // 5. Send directly to Figma Sandbox (Structured Clone handles Uint8Array automatically)
+      if (currentMode === 'url') {
+        const url = urlInput.value.trim();
+        if (!url) throw new Error('Please enter a valid URL');
+        btnImportText.textContent = 'Fetching URL...';
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        let response = await fetch(proxyUrl).catch(() => null);
+        if (!response || !response.ok) throw new Error('Failed to fetch URL. It might be blocking proxies.');
+        let jsonResponse = await response.json().catch(() => null);
+        if (!jsonResponse || !jsonResponse.contents) throw new Error('Invalid response from proxy.');
+        let htmlData = jsonResponse.contents;
+        const baseTag = `<base href="${url}">`;
+        htmlData = htmlData.includes('<head>') ? htmlData.replace('<head>', `<head>${baseTag}`) : `${baseTag}${htmlData}`;
+        const nodeData = await processHtml(htmlData, 0);
+        nodesToImport.push(nodeData);
+      } else if (currentMode === 'file') {
+        if (!uploadedFiles || uploadedFiles.length === 0) throw new Error('Please upload HTML files first.');
+        for (let i = 0; i < uploadedFiles.length; i++) {
+          const nodeData = await processHtml(uploadedFiles[i].html, i, true);
+          nodesToImport.push(nodeData);
+        }
+      } else {
+        const htmlData = htmlInput.value;
+        if (!htmlData.trim()) throw new Error('Please enter some HTML code');
+        const nodeData = await processHtml(htmlData, 0);
+        nodesToImport.push(nodeData);
+      }
+
       btnImportText.textContent = 'Drawing in Figma...';
       parent.postMessage(
         {
           pluginMessage: {
             type: 'import-json',
-            data: figmaNodeData, // Sending raw object instead of JSON string
+            data: nodesToImport, // Sending array of nodes
             autoLayout: enforceAutoLayout,
           },
         },
         '*',
       );
-
-      // Do not reset UI here. Wait for the plugin to send 'import-done' message back.
     } catch (err: any) {
       console.error(err);
       alert('Error: ' + err.message);

@@ -23,13 +23,15 @@ const fileInput = document.getElementById('file-input') as HTMLInputElement;
 const fileStatus = document.getElementById('file-status') as HTMLParagraphElement;
 
 let currentMode: 'code' | 'url' | 'file' = 'code';
-let uploadedFiles: { name: string, html: string }[] = [];
+let uploadedFiles: { name: string; html: string }[] = [];
 
 // Setup Tabs
 function resetTabs() {
-  const activeClass = 'flex-1 py-1 text-[11px] font-medium rounded bg-figma-bg text-white shadow-sm transition-colors duration-200 focus:outline-none';
-  const inactiveClass = 'flex-1 py-1 text-[11px] font-medium rounded text-gray-400 hover:text-white transition-colors duration-200 focus:outline-none';
-  
+  const activeClass =
+    'flex-1 py-1 text-[11px] font-medium rounded bg-figma-bg text-white shadow-sm transition-colors duration-200 focus:outline-none';
+  const inactiveClass =
+    'flex-1 py-1 text-[11px] font-medium rounded text-gray-400 hover:text-white transition-colors duration-200 focus:outline-none';
+
   tabCode.className = currentMode === 'code' ? activeClass : inactiveClass;
   tabFile.className = currentMode === 'file' ? activeClass : inactiveClass;
   tabUrl.className = currentMode === 'url' ? activeClass : inactiveClass;
@@ -60,8 +62,10 @@ dropzone.addEventListener('click', () => {
 });
 
 function handleFiles(fileList: FileList | File[]) {
-  const files = Array.from(fileList).filter(f => f.name.endsWith('.html') || f.name.endsWith('.htm') || f.type === 'text/html');
-  
+  const files = Array.from(fileList).filter(
+    (f) => f.name.endsWith('.html') || f.name.endsWith('.htm') || f.type === 'text/html',
+  );
+
   if (files.length === 0) {
     fileStatus.textContent = 'Invalid file type. Please upload .html files.';
     fileStatus.classList.remove('hidden');
@@ -71,15 +75,15 @@ function handleFiles(fileList: FileList | File[]) {
   uploadedFiles = [];
   let filesRead = 0;
 
-  files.forEach(file => {
+  files.forEach((file) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       uploadedFiles.push({
         name: file.name,
-        html: e.target?.result as string
+        html: e.target?.result as string,
       });
       filesRead++;
-      
+
       if (filesRead === files.length) {
         fileStatus.textContent = `Loaded: ${files.length} file(s)`;
         fileStatus.classList.remove('hidden');
@@ -107,7 +111,7 @@ dropzone.addEventListener('dragleave', (e) => {
 dropzone.addEventListener('drop', (e) => {
   e.preventDefault();
   dropzone.classList.remove('border-figma-blue', 'bg-figma-surface/80');
-  
+
   const files = e.dataTransfer?.files;
   if (files && files.length > 0) handleFiles(files);
 });
@@ -116,7 +120,7 @@ dropzone.addEventListener('drop', (e) => {
 if (btnImport) {
   btnImport.onclick = async () => {
     try {
-      let htmlData = '';
+      const htmlData = '';
 
       btnImportText.textContent = 'Processing...';
       btnImportSpinner.classList.remove('hidden');
@@ -125,7 +129,12 @@ if (btnImport) {
       const enforceAutoLayout = useAutoLayout.checked;
 
       // Helper to process a single HTML string
-      const processHtml = async (html: string, index: number, isBatch: boolean = false, fileName?: string) => {
+      const processHtml = async (
+        html: string,
+        index: number,
+        isBatch: boolean = false,
+        fileName?: string,
+      ) => {
         btnImportText.textContent = `Rendering${isBatch ? ` (${index + 1}/${uploadedFiles.length})` : ''}...`;
 
         const frameDoc = renderFrame.contentDocument || renderFrame.contentWindow?.document;
@@ -158,14 +167,14 @@ if (btnImport) {
 
         const figmaNodeData = await generateFigmaJSON(frameDoc.body);
         if (!figmaNodeData) throw new Error('Failed to parse DOM');
-        
+
         if (fileName) {
           // Format filename (remove .html, replace dashes/underscores with spaces, capitalize)
           const formattedName = fileName
             .replace(/\.html?$/i, '')
             .replace(/[-_]/g, ' ')
             .split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
             .join(' ');
           figmaNodeData.name = formattedName || figmaNodeData.name;
         }
@@ -196,29 +205,34 @@ if (btnImport) {
         };
 
         await fetchImages(figmaNodeData);
-        
+
         // Return parsed data
         return figmaNodeData;
       };
 
-      let nodesToImport = [];
+      const nodesToImport = [];
 
       if (currentMode === 'url') {
         const url = urlInput.value.trim();
         if (!url) throw new Error('Please enter a valid URL');
         btnImportText.textContent = 'Fetching URL...';
         const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-        let response = await fetch(proxyUrl).catch(() => null);
-        if (!response || !response.ok) throw new Error('Failed to fetch URL. It might be blocking proxies.');
-        let jsonResponse = await response.json().catch(() => null);
-        if (!jsonResponse || !jsonResponse.contents) throw new Error('Invalid response from proxy.');
+        const response = await fetch(proxyUrl).catch(() => null);
+        if (!response || !response.ok)
+          throw new Error('Failed to fetch URL. It might be blocking proxies.');
+        const jsonResponse = await response.json().catch(() => null);
+        if (!jsonResponse || !jsonResponse.contents)
+          throw new Error('Invalid response from proxy.');
         let htmlData = jsonResponse.contents;
         const baseTag = `<base href="${url}">`;
-        htmlData = htmlData.includes('<head>') ? htmlData.replace('<head>', `<head>${baseTag}`) : `${baseTag}${htmlData}`;
+        htmlData = htmlData.includes('<head>')
+          ? htmlData.replace('<head>', `<head>${baseTag}`)
+          : `${baseTag}${htmlData}`;
         const nodeData = await processHtml(htmlData, 0);
         nodesToImport.push(nodeData);
       } else if (currentMode === 'file') {
-        if (!uploadedFiles || uploadedFiles.length === 0) throw new Error('Please upload HTML files first.');
+        if (!uploadedFiles || uploadedFiles.length === 0)
+          throw new Error('Please upload HTML files first.');
         for (let i = 0; i < uploadedFiles.length; i++) {
           const nodeData = await processHtml(uploadedFiles[i].html, i, true, uploadedFiles[i].name);
           nodesToImport.push(nodeData);

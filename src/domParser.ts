@@ -494,12 +494,17 @@ export function extractFigmaStyles(element: Element): ExtractedStyles {
               const colorMatches = bgImage.match(colorStopRegex);
 
               if (colorMatches && colorMatches.length >= 2) {
-                const stops: { color: { r: number; g: number; b: number; a: number }; position: number }[] = [];
+                const stops: {
+                  color: { r: number; g: number; b: number; a: number };
+                  position: number;
+                }[] = [];
                 for (let i = 0; i < colorMatches.length; i++) {
                   const colorStr = colorMatches[i];
                   const parsedStop = rgbaToFigmaColor(colorStr);
                   const posMatch = colorStr.match(/([\d.]+)%/);
-                  const position = posMatch ? parseFloat(posMatch[1]) / 100 : i / (colorMatches.length - 1);
+                  const position = posMatch
+                    ? parseFloat(posMatch[1]) / 100
+                    : i / (colorMatches.length - 1);
                   if (parsedStop) stops.push({ color: parsedStop, position });
                 }
                 if (stops.length >= 2) {
@@ -643,15 +648,19 @@ function capitalizeAndFormat(str: string): string {
   const spaced = str.replace(/[-_]/g, ' ');
   return spaced
     .split(' ')
-    .filter(word => word.length > 0)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .filter((word) => word.length > 0)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 }
 
 /**
  * Generates a natural-sounding layer name based on element attributes or text content.
  */
-function generateLayerName(el: Element, isTextNode: boolean = false, textContent: string = ''): string {
+function generateLayerName(
+  el: Element,
+  isTextNode: boolean = false,
+  textContent: string = '',
+): string {
   if (isTextNode && textContent) {
     const trimmed = textContent.trim();
     if (trimmed.length > 0) {
@@ -671,44 +680,44 @@ function generateLayerName(el: Element, isTextNode: boolean = false, textContent
 
   // Fallback to tag name
   const tagName = el.tagName ? el.tagName.toLowerCase() : 'frame';
-  
+
   const tagMap: Record<string, string> = {
-    'body': 'Page',
-    'nav': 'Navbar',
-    'div': 'Container',
-    'section': 'Section',
-    'article': 'Article',
-    'header': 'Header',
-    'footer': 'Footer',
-    'main': 'Main',
-    'aside': 'Sidebar',
-    'ul': 'List',
-    'ol': 'Ordered List',
-    'li': 'List Item',
-    'a': 'Link',
-    'p': 'Paragraph',
-    'span': 'Text Wrap',
-    'button': 'Button',
-    'img': 'Image',
-    'form': 'Form',
-    'input': 'Input Field',
-    'textarea': 'Text Area',
-    'label': 'Label',
-    'table': 'Table',
-    'thead': 'Table Head',
-    'tbody': 'Table Body',
-    'tfoot': 'Table Foot',
-    'tr': 'Table Row',
-    'th': 'Table Header',
-    'td': 'Table Cell',
-    'h1': 'Heading',
-    'h2': 'Heading',
-    'h3': 'Heading',
-    'h4': 'Heading',
-    'h5': 'Heading',
-    'h6': 'Heading',
-    'figure': 'Figure',
-    'figcaption': 'Caption'
+    body: 'Page',
+    nav: 'Navbar',
+    div: 'Container',
+    section: 'Section',
+    article: 'Article',
+    header: 'Header',
+    footer: 'Footer',
+    main: 'Main',
+    aside: 'Sidebar',
+    ul: 'List',
+    ol: 'Ordered List',
+    li: 'List Item',
+    a: 'Link',
+    p: 'Paragraph',
+    span: 'Text Wrap',
+    button: 'Button',
+    img: 'Image',
+    form: 'Form',
+    input: 'Input Field',
+    textarea: 'Text Area',
+    label: 'Label',
+    table: 'Table',
+    thead: 'Table Head',
+    tbody: 'Table Body',
+    tfoot: 'Table Foot',
+    tr: 'Table Row',
+    th: 'Table Header',
+    td: 'Table Cell',
+    h1: 'Heading',
+    h2: 'Heading',
+    h3: 'Heading',
+    h4: 'Heading',
+    h5: 'Heading',
+    h6: 'Heading',
+    figure: 'Figure',
+    figcaption: 'Caption',
   };
 
   return tagMap[tagName] || capitalizeAndFormat(tagName);

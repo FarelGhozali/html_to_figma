@@ -16,11 +16,16 @@ function createSolidPaint(color: RGBAColor): SolidPaint {
 /**
  * Convert gradientFill from JSON to Figma GradientPaint.
  */
-function createGradientPaint(gradientFill: { type: 'LINEAR'; angle: number; stops: { color: RGBAColor; position: number }[] }): GradientPaint {
+function createGradientPaint(gradientFill: {
+  type: 'LINEAR';
+  angle: number;
+  stops: { color: RGBAColor; position: number }[];
+}): GradientPaint {
   const angleRad = (gradientFill.angle - 90) * (Math.PI / 180);
   const cos = Math.cos(angleRad);
   const sin = Math.sin(angleRad);
-  const cx = 0.5, cy = 0.5;
+  const cx = 0.5,
+    cy = 0.5;
   const startX = cx - cos * 0.5;
   const startY = cy - sin * 0.5;
 
@@ -499,11 +504,11 @@ figma.ui.onmessage = async (msg: any) => {
 
       for (const nodeData of nodeDataArray) {
         const newNode = await generateFigmaUI(nodeData, figma.currentPage);
-        
+
         // Offset the new node so they don't stack on top of each other
         newNode.x = figma.viewport.center.x + currentXOffset;
         newNode.y = figma.viewport.center.y;
-        
+
         currentXOffset += newNode.width + 100; // Add 100px padding
         createdNodes.push(newNode);
       }

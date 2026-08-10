@@ -17,16 +17,16 @@
   "license": "(MIT OR Apache-2.0)",
   "description": "",
   "devDependencies": {
-    "@figma/plugin-typings": "^1.132.0",
-    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@figma/plugin-typings": "^1.133.0",
+    "@typescript-eslint/eslint-plugin": "^8.66.0",
     "@typescript-eslint/parser": "^8.62.0",
     "esbuild": "^0.28.1",
-    "eslint": "^8.57.0",
+    "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
     "jsdom": "^30.0.1",
     "prettier": "^3.9.6",
-    "typescript": "^6.0.3",
-    "vite": "^8.2.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1",
     "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^4.1.10"
   }

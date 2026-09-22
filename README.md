@@ -21,6 +21,9 @@ Tired of manually recreating web components in Figma? This plugin acts as your p
 
 - **No Backend Required**: Runs entirely inside Figma's UI iframe using a virtual DOM environment.
 - **Auto Layout Mastery**: Automatically translates CSS Flexbox rules (`flex-direction`, `justify-content`, `align-items`, `gap`, `padding`) into strict Figma Auto Layout parameters.
+- **Image Handling**: Fetches remote/URL images from `<img>` tags and `background-image` and applies them as real `IMAGE` fills on Figma nodes.
+- **Advanced CSS Styles**: Extracts `border-radius` (corner radius), `border-width`/`border-color` (strokes), `box-shadow` (drop shadows), and `backdrop-filter`.
+- **SVG Rendering**: Uses Figma's `createNodeFromSvg()` to render SVG nodes (native for form controls like checkboxes and dropdown chevrons).
 - **Modern UI**: Built with Tailwind CSS, featuring a sleek, minimal dark mode interface.
 - **Typography Extraction**: Accurately pulls font families, weights, sizes, and colors directly from your CSS.
 - **Instant Translation**: Paste your HTML code and see it instantly rendered as native Figma layers.
@@ -92,7 +95,8 @@ Click **Import to Canvas**, and the plugin will magically generate a Figma Frame
 Translating web DOM to Figma is highly complex. Currently, the plugin excels at Flexbox and basic styling, but has a few limitations:
 - **CSS Grid**: Not currently supported (mapped to standard Auto Layout frames).
 - **Complex Pseudo-elements**: `::before` and `::after` are ignored.
-- **Images/SVG**: `<img>` tags and inline `<svg>` are currently skipped and need manual insertion.
+- **Inline `<svg>` from input HTML**: Still skipped — only the plugin's own synthetic SVGs (form controls) are currently rendered.
+- **`data:` (base64) image URIs**: Skipped intentionally, as the payload is too large to pass through `postMessage`. Remote image URLs are fully supported.
 
 ---
 

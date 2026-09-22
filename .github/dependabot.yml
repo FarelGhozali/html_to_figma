@@ -8,17 +8,17 @@ updates:
     schedule:
       interval: "weekly" # Pilihan lain: "daily" atau "monthly"
     
-    # (Opsional) Mengelompokkan PR dari Dependabot jika ada
-    groups:
-      dependencies:
-        patterns:
-          - "*"
-          
+    # Batasi jumlah PR terbuka agar tidak terlalu banyak
+    open-pull-requests-limit: 10
+    
+    # Commit message prefix untuk npm
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    
     # Opsi lain yang bisa berguna:
-    # open-pull-requests-limit: 10
-    # commit-message:
-    #   prefix: "chore"
-    #   include: "scope"
+    # labels:
+    #   - "dependencies"
 
   # Konfigurasi untuk memperbarui Actions yang digunakan di GitHub Workflows
   - package-ecosystem: "github-actions"

@@ -17,7 +17,7 @@
   "license": "(MIT OR Apache-2.0)",
   "description": "",
   "devDependencies": {
-    "@figma/plugin-typings": "^1.138.0",
+    "@figma/plugin-typings": "^1.139.0",
     "@typescript-eslint/eslint-plugin": "^8.70.0",
     "@typescript-eslint/parser": "^8.70.0",
     "esbuild": "^0.28.2",
